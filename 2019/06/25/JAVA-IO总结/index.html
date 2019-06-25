@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT">
+  <meta name="keywords" content="io,">
 
 
 
@@ -79,14 +79,21 @@
 
 
 
-<meta property="og:type" content="website">
-<meta property="og:title" content="tags">
-<meta property="og:url" content="http://yoursite.com/tags/index.html">
+<meta name="description" content="IO流主要相关接口和类 IO流结构框图 JAVA IO流的分类&amp;emsp;&amp;emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。&amp;emsp;&amp;emsp;字符流与字节流的区别：&amp;emsp;&amp;emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。&amp;emsp;&amp;emsp;">
+<meta name="keywords" content="io">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JAVA IO总结">
+<meta property="og:url" content="http://yoursite.com/2019/06/25/JAVA-IO总结/index.html">
 <meta property="og:site_name" content="请你吃王中王">
+<meta property="og:description" content="IO流主要相关接口和类 IO流结构框图 JAVA IO流的分类&amp;emsp;&amp;emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。&amp;emsp;&amp;emsp;字符流与字节流的区别：&amp;emsp;&amp;emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。&amp;emsp;&amp;emsp;">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-06-18T01:08:39.701Z">
+<meta property="og:image" content="https://s2.ax1x.com/2019/06/25/ZZdAXt.png">
+<meta property="og:image" content="https://s2.ax1x.com/2019/06/25/ZZdZ0f.md.jpg">
+<meta property="og:updated_time" content="2019-06-25T14:08:44.034Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="tags">
+<meta name="twitter:title" content="JAVA IO总结">
+<meta name="twitter:description" content="IO流主要相关接口和类 IO流结构框图 JAVA IO流的分类&amp;emsp;&amp;emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。&amp;emsp;&amp;emsp;字符流与字节流的区别：&amp;emsp;&amp;emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。&amp;emsp;&amp;emsp;">
+<meta name="twitter:image" content="https://s2.ax1x.com/2019/06/25/ZZdAXt.png">
 
 
 
@@ -116,13 +123,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/tags/">
+  <link rel="canonical" href="http://yoursite.com/2019/06/25/JAVA-IO总结/">
 
 
 
 
 
-  <title>tags | 请你吃王中王</title>
+  <title>JAVA IO总结 | 请你吃王中王</title>
   
 
 
@@ -269,33 +276,168 @@
 
   <div id="posts" class="posts-expand">
     
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/06/25/JAVA-IO总结/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="请你吃王中王">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="请你吃王中王">
+    </span>
+
     
-    
-    <div class="post-block page">
       <header class="post-header">
 
-	<h1 class="post-title" itemprop="name headline">tags</h1>
-
-
-
-</header>
-
-      
-      
-      
-      <div class="post-body">
         
         
+          <h1 class="post-title" itemprop="name headline">JAVA IO总结</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-06-25T21:48:00+08:00">
+                2019-06-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
           
-        
-      </div>
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/IO/" itemprop="url" rel="index">
+                    <span itemprop="name">IO</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
       
       
+
+      
+        <h5 id="IO流主要相关接口和类"><a href="#IO流主要相关接口和类" class="headerlink" title="IO流主要相关接口和类"></a>IO流主要相关接口和类</h5><p><a href="https://imgchr.com/i/ZZdAXt" target="_blank" rel="noopener"><img src="https://s2.ax1x.com/2019/06/25/ZZdAXt.png" alt="ZZdAXt.png"></a></p>
+<h5 id="IO流结构框图"><a href="#IO流结构框图" class="headerlink" title="IO流结构框图"></a>IO流结构框图</h5><p><a href="https://imgchr.com/i/ZZdZ0f" target="_blank" rel="noopener"><img src="https://s2.ax1x.com/2019/06/25/ZZdZ0f.md.jpg" alt="ZZdZ0f.md.jpg"></a></p>
+<h5 id="JAVA-IO流的分类"><a href="#JAVA-IO流的分类" class="headerlink" title="JAVA IO流的分类"></a>JAVA IO流的分类</h5><p>&emsp;&emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。<br>&emsp;&emsp;<strong>字符流与字节流的区别：</strong><br>&emsp;&emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。<br>&emsp;&emsp;处理对象不同：字节流能处理所有类型的数据（如图片、avi等），而字符流只能处理字符类型的数据。</p>
+
       
     </div>
     
     
     
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/io/" rel="tag"># io</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/06/18/test/" rel="next" title="二次部署hexo方法">
+                <i class="fa fa-chevron-left"></i> 二次部署hexo方法
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
   </div>
 
 
@@ -328,8 +470,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
             
@@ -389,6 +540,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流主要相关接口和类"><span class="nav-number">1.</span> <span class="nav-text">IO流主要相关接口和类</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流结构框图"><span class="nav-number">2.</span> <span class="nav-text">IO流结构框图</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JAVA-IO流的分类"><span class="nav-number">3.</span> <span class="nav-text">JAVA IO流的分类</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
