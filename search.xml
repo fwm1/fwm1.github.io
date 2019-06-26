@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title><![CDATA[image test]]></title>
+    <url>%2F2019%2F06%2F26%2Fimage-test%2F</url>
+    <content type="text"><![CDATA[]]></content>
+  </entry>
+  <entry>
     <title><![CDATA[JAVA IO总结]]></title>
     <url>%2F2019%2F06%2F25%2FJAVA-IO%E6%80%BB%E7%BB%93%2F</url>
     <content type="text"><![CDATA[IO流主要相关接口和类 IO流结构框图 JAVA IO流的分类&emsp;&emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。&emsp;&emsp;字符流与字节流的区别：&emsp;&emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。&emsp;&emsp;处理对象不同：字节流能处理所有类型的数据（如图片、avi等），而字符流只能处理字符类型的数据。]]></content>
