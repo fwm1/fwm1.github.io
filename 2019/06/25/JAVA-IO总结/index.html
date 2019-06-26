@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://s2.ax1x.com/2019/06/25/ZZdAXt.png">
 <meta property="og:image" content="https://s2.ax1x.com/2019/06/25/ZZdZ0f.md.jpg">
-<meta property="og:updated_time" content="2019-06-26T05:07:22.292Z">
+<meta property="og:updated_time" content="2019-06-26T05:38:16.303Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="JAVA IO总结">
 <meta name="twitter:description" content="IO流主要相关接口和类 IO流结构框图 JAVA IO流的分类&amp;emsp;&amp;emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。&amp;emsp;&amp;emsp;字符流与字节流的区别：&amp;emsp;&amp;emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。&amp;emsp;&amp;emsp;">
@@ -380,6 +380,28 @@
         <h5 id="IO流主要相关接口和类"><a href="#IO流主要相关接口和类" class="headerlink" title="IO流主要相关接口和类"></a>IO流主要相关接口和类</h5><p><a href="https://imgchr.com/i/ZZdAXt" target="_blank" rel="noopener"><img src="https://s2.ax1x.com/2019/06/25/ZZdAXt.png" alt="ZZdAXt.png"></a></p>
 <h5 id="IO流结构框图"><a href="#IO流结构框图" class="headerlink" title="IO流结构框图"></a>IO流结构框图</h5><p><a href="https://imgchr.com/i/ZZdZ0f" target="_blank" rel="noopener"><img src="https://s2.ax1x.com/2019/06/25/ZZdZ0f.md.jpg" alt="ZZdZ0f.md.jpg"></a></p>
 <h5 id="JAVA-IO流的分类"><a href="#JAVA-IO流的分类" class="headerlink" title="JAVA IO流的分类"></a>JAVA IO流的分类</h5><p>&emsp;&emsp;字符流是由于数据编码的不同，而有了对字符进行高效操作的流对象。本质其实就是基于字节流读取时，去查了指定的字符编码表。<br>&emsp;&emsp;<strong>字符流与字节流的区别：</strong><br>&emsp;&emsp;读写单位不同:字节流以字节（8bit）为单位，字符流以字符为单位，根据码表映射字符，一次可能读多个字节。<br>&emsp;&emsp;处理对象不同：字节流能处理所有类型的数据（如图片、avi等），而字符流只能处理字符类型的数据。</p>
+<h5 id="IO字节流对象"><a href="#IO字节流对象" class="headerlink" title="IO字节流对象"></a>IO字节流对象</h5><ul>
+<li>输入字节流<strong>InputStream</strong>是所有的输入字节流的父类，是一个抽象类。</li>
+<li><strong>ByteArrayInputStream</strong>、<strong>StringBufferInputStream</strong>、<strong>FileInputStream</strong> 是三种基本的介质流，它们分别从Byte 数组、StringBuffer、和本地文件中读取数据。<strong>PipedInputStream</strong> 是从与其它线程共用的管道中读取数据。</li>
+<li>ObjectInputStream 和所有FilterInputStream 的子类都是装饰流。  </li>
+</ul>
+<h5 id="IO字符流对象"><a href="#IO字符流对象" class="headerlink" title="IO字符流对象"></a>IO字符流对象</h5><ul>
+<li>Reader/Writer 是所有的输入/输出字符流的父类，它是一个抽象类。</li>
+<li><strong>CharArrayWriter</strong>/<strong>CharArrayReader</strong>、<strong>StringWriter</strong>/<strong>StringReader</strong> 是两种基本的介质流，它们分别向Char 数组、String 中写入/读取数据。<strong>PipedWriter</strong>/<strong>PipedReader</strong> 是向与其它线程共用的管道中写入/读取数据。</li>
+<li>BufferedWriter/BufferedReader 是一个装饰器为Writer/Reader提供缓冲功能。</li>
+<li><strong>InputStreamReader</strong> 是一个连接字节流和字符流的桥梁，它将字节流转变为字符流。FileReader 可以说是一个达到此功能、常用的工具类，在其源代码中明显使用了将FileInputStream 转变为Reader 的方法。我们可以从这个类中得到一定的技巧。Reader 中各个类的用途和使用方法基本和InputStream 中的类使用一致。</li>
+<li><strong>OutputStreamWriter</strong> 是OutputStream 到Writer 转换的桥梁，它的子类FileWriter 其实就是一个实现此功能的具体类。    </li>
+</ul>
+<h5 id="字节流和字符流的转换"><a href="#字节流和字符流的转换" class="headerlink" title="字节流和字符流的转换"></a>字节流和字符流的转换</h5><ul>
+<li>InputStreamReader:字节到字符</li>
+<li>OutputStreamWriter:字符到字节</li>
+<li>这两个流对象是字符体系中的成员，它们有转换作用，本身又是字符流，所以在构造的时候需要传入字节流对象进来。  </li>
+</ul>
+<h5 id="RandomAccessFile"><a href="#RandomAccessFile" class="headerlink" title="RandomAccessFile"></a>RandomAccessFile</h5><p>该对象并不是流体系中的一员，其封装了字节流，同时还封装了一个缓冲区（字符数组），通过内部的指针来操作字符数组中的数据。</p>
+<ul>
+<li>该对象只能操作文件，所以构造函数接收两种类型的参数：a.字符串文件路径；b.File对象。</li>
+<li>该对象既可以对文件进行读操作，也能进行写操作，在进行对象实例化时可指定操作模式(r,rw) 注意：该对象在实例化时，如果要操作的文件不存在，会自动创建；如果文件存在，写数据未指定位置，会从头开始写，即覆盖原有的内容。 可以用于多线程下载或多个线程同时写数据到文件。</li>
+</ul>
 
       
     </div>
@@ -550,7 +572,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流主要相关接口和类"><span class="nav-number">1.</span> <span class="nav-text">IO流主要相关接口和类</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流结构框图"><span class="nav-number">2.</span> <span class="nav-text">IO流结构框图</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JAVA-IO流的分类"><span class="nav-number">3.</span> <span class="nav-text">JAVA IO流的分类</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流主要相关接口和类"><span class="nav-number">1.</span> <span class="nav-text">IO流主要相关接口和类</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IO流结构框图"><span class="nav-number">2.</span> <span class="nav-text">IO流结构框图</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JAVA-IO流的分类"><span class="nav-number">3.</span> <span class="nav-text">JAVA IO流的分类</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IO字节流对象"><span class="nav-number">4.</span> <span class="nav-text">IO字节流对象</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#IO字符流对象"><span class="nav-number">5.</span> <span class="nav-text">IO字符流对象</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#字节流和字符流的转换"><span class="nav-number">6.</span> <span class="nav-text">字节流和字符流的转换</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#RandomAccessFile"><span class="nav-number">7.</span> <span class="nav-text">RandomAccessFile</span></a></li></ol></div>
             
 
           </div>
