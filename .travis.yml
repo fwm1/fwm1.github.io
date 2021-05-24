@@ -10,7 +10,7 @@ cache:
     - node_modules # 缓存 node_modules 加快构建速度
 before_script: ## 根据你所用的主题和自定义的不同，这里会有所不同
   - npm install -g hexo-cli # 在 CI 环境内安装 Hexo
-  - npm npm install hexo-deployer-git --save
+  #- npm install hexo-deployer-git --save
   #- mkdir themes # 由于我们没有将 themes/ 上传，所以我们需要新建一个
   #- cd themes 
   #- git clone https://github.com/SukkaW/hexo-theme-suka.git suka #从 Github 上拉取 Suka 主题
