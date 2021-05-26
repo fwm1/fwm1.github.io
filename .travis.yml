@@ -1,7 +1,7 @@
 os: linux
 language: node_js 
 node_js:
-  - 10  # 使用 nodejs LTS v10
+  - 14.17.0  # 使用 nodejs LTS v10
 branches:
   only:
     - hexo-source # 只监控 source 的 branch
