@@ -5,7 +5,7 @@ tags: hexo
 categories:
 ---
 
-以下步骤假设你已经掌握了hexo基本命令和原理，并且已经初始化好了hexo，也安装好了自定义主题。
+以下步骤假设你已经安装好了必要的环境比如nodejs，掌握了hexo基本命令和原理，并且已经初始化好了hexo，也安装好了自定义主题。
 
 ##### Hexo原理
 
@@ -59,7 +59,7 @@ https://juejin.cn/post/6844903517853843470
 os: linux
 language: node_js 
 node_js:
-  - 10  # 使用 nodejs LTS v10
+  - 14.17.0  # 使用 nodejs LTS v14.17.0
 branches:
   only:
     - hexo-source # 只监控 hexo-source 的 branch
@@ -94,5 +94,5 @@ Tips：
 
 - 构建会有延迟，可以在TravisCI中看构建过程
 
-
+<img src="https://i.loli.net/2021/05/26/HxFGZKep3wyVIrJ.png" alt="image-20210526160021058" style="zoom:50%;" />
 
