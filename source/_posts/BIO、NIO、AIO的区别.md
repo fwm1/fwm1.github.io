@@ -15,6 +15,24 @@ categories: Java
 - 阻塞：单个线程内遇到同步等待后，一直在原地等待同步方法返回结果，具体到IO操作就是，当试图对FD或socket进行IO读写时，若当时没有内容可读或无法写入，线程就一直等待，知道有内容可读或可写。
 - 非阻塞：单个线程内遇到同步等待后，不会原地等待，而是直接返回，具体到IO操作就是，当试图对DF或socket进行读写时，若当时没有内容可读或无法写入，读写函数立即返回，不会等待。
 
+**阻塞与非阻塞指的的是当不能进行读写（网卡满时的写/网卡空的时候的读）的时候，I/O 操作立即返回还是阻塞；同步异步指的是，当数据已经ready的时候，读写操作是同步读还是异步读。**
+
+##### 常见IO模型对比
+
+所有的系统IO分为2个阶段：**等待IO就绪** 和 **实际IO操作**，举例来说，socket.read()分为等待网卡buffer有可读数据和buffer中的数据复制到用户空间。
+
+- 如果是BIO，等待网卡IO就绪和复制数据到用户空间这两个步骤都是阻塞的；
+
+- 如果是NIO，等待网卡IO就绪是非阻塞的，若网卡buffer中无可读数据，则直接返回；但复制数据到用户空间这个过程仍然是阻塞的，因此是同步非阻塞模型。
+
+- 如果是AIO，这两个过程都是非阻塞的。
+
+下图是几种常见的IO模型对比：
+
+![image-20210527151101643](https://i.loli.net/2021/05/27/8mfnS3iXq67xlsw.png)
+
+
+
 ##### 同步阻塞(BIO)
 
 ###### 场景
@@ -50,6 +68,36 @@ public static void main(String[] args) throws Exception {
 ```
 
 ##### 同步非阻塞(NIO)
+
+###### Buffer
+
+- ByteBuffer、CharBuffer、DoubleBuffer、FloatBuffer...
+- MappedByteBuffer(mmap)
+- HeapByteBuffer
+- DirectByteBuffer  通过FullGC回收内存
+
+###### Channel
+
+- FileChannel(文件)
+- DatagramChannel(UDP)
+- SocketChannel、ServerSocketChannel(TCP)
+
+###### Selector
+
+- selector.select() 是阻塞的，无论是通过操作系统的通知(epoll)还是不停地轮询(select，poll)
+- selector.wakeup()解除阻塞在select上的线程，立即返回
+
+###### 场景
+
+- 连接数较多
+- 短连接
+
+###### 问题
+
+- NIO依赖操作系统各自实现，JAVA原生的NIO编程复杂，不宜用；
+- 建议使用成熟的NIO框架入Netty，解决了NIO的很多陷阱，屏蔽了不同操作系统的差异。
+
+###### demo
 
 ```java
  public static void main(String[] args) throws IOException {
@@ -92,11 +140,6 @@ public static void main(String[] args) throws Exception {
 
 
 
-###### 场景
-
-- 连接数较多
-- 短连接
-
 ###### 构成
 
 - Channel：全双工通道
@@ -109,6 +152,16 @@ public static void main(String[] args) throws Exception {
 
 - 连接数较多
 - 长连接
+
+
+
+*参考*：
+
+https://zhuanlan.zhihu.com/p/23488863
+
+https://developer.aliyun.com/article/726698
+
+
 
 
 
