@@ -2,12 +2,8 @@
 title: 分布式ID生成方法总结
 date: 2021-11-14 10:02:49
 tags: 分布式ID
-categories: 分布式ID
+categories: 分布式
 ---
-
-### 分布式ID应用场景
-
-分库分表场景
 
 ### 分布式ID特性
 
@@ -65,7 +61,7 @@ set @@auto_increment_increment = 2;  -- 步长
 
 1. 数据库自增ID模式下，每次获取ID都要访问一次数据库，造成数据库压力大
 2. 改为每次获取一个segment(step决定大小)号段的值，用完之后再去数据库获取新的号段，可以大大的减轻数据库的压力
-3.  各个业务不同的发号需求用biz_tag字段来区分，每个app-tag的ID获取相互隔离，互不影响。如果以后有性能需求需要对数据库扩容，不需要上述描述的复杂的扩容操作，只需要对app-tag分库分表就行
+3.  各个业务不同的发号需求用app_tag字段来区分，每个app-tag的ID获取相互隔离，互不影响。如果以后有性能需求需要对数据库扩容，不需要上述描述的复杂的扩容操作，只需要对app-tag分库分表就行
 
 ```sql
 CREATE TABLE `segments`
@@ -84,12 +80,12 @@ INSERT INTO segments(`app_tag`, `max_id`, `step`) VALUES ('test_business', 0, 10
 
 ![image-20211114111047924](https://i.loli.net/2021/11/14/uMlwINXBT6kJEHh.png)
 
-test_tag在第一台Leaf机器上是1~1000的号段，当这个号段用完时，会去加载另一个长度为step=1000的号段，假设另外两台号段都没有更新，这个时候第一台机器新加载的号段就应该是3001~4000。同时数据库对应的biz_tag这条数据的max_id会从3000被更新成4000，更新号段的SQL语句如下：
+test_tag在第一台Leaf机器上是1-1000的号段，当这个号段用完时，会去加载另一个长度为step=1000的号段，假设另外两台号段都没有更新，这个时候第一台机器新加载的号段就应该是3001-4000。同时数据库对应的app_tag这条数据的max_id会从3000被更新成4000，更新号段的SQL语句如下：
 
 ```sql
 Begin
-UPDATE table SET max_id=max_id+step WHERE biz_tag=xxx
-SELECT tag, max_id, step FROM table WHERE biz_tag=xxx
+UPDATE table SET max_id=max_id+step WHERE app_tag=xxx
+SELECT tag, max_id, step FROM table WHERE app_tag=xxx
 Commit
 ```
 
@@ -144,6 +140,19 @@ public class SnowFlakeShortUrl {
 
     /**
      * 每一部分的最大值
+     * -1 == 1111 1111
+     * -1 << 12 == 1111 1111 0000 0000 0000
+     * MAX_MACHINE_NUM == -1L ^ (-1L << SEQUENCE_BIT)
+     * 1111 1111 1111 1111 1111
+     * ^
+     * 1111 1111 0000 0000 0000
+     * =
+     * 0000 0000 1111 1111 1111 == MAX_SEQUENCE
+     * ------------------------------------------------
+     * MAX_SEQUENCE        = 0000 0000 1111 1111 1111
+     * MAX_MACHINE_NUM     = 0000 0000 0000 0001 1111
+     * MAX_DATA_CENTER_NUM = 0000 0000 0000 0001 1111
+     * ------------------------------------------------
      */
     private final static long MAX_SEQUENCE = -1L ^ (-1L << SEQUENCE_BIT);
     private final static long MAX_MACHINE_NUM = -1L ^ (-1L << MACHINE_BIT);
@@ -282,3 +291,10 @@ public class SnowFlakeShortUrl {
 优点：不依赖数据库，性能好
 
 缺点：依赖第三方组件
+
+
+
+参考：
+
+[美团Leaf]: https://tech.meituan.com/2017/04/21/mt-leaf.html
+
