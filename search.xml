@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>BIO、NIO、AIO的区别</title>
+    <url>/2021/05/25/BIO%E3%80%81NIO%E3%80%81AIO%E7%9A%84%E5%8C%BA%E5%88%AB/</url>
+    <content><![CDATA[<h5 id="同步和异步"><a href="#同步和异步" class="headerlink" title="同步和异步"></a>同步和异步</h5><ul>
+<li>同步：一个流程中的每隔方法必须依次执行，具体到IO操作就是，线程触发IO操作并等待IO完成，或者需要轮询查看IO操作是否完成。</li>
+<li>异步：调用方法立即返回，不需要等待方法结束就可以继续执行其他任务，具体到IO操作就是，线程触发IO操作后立即返回，当IO操作完成时会得到内核<strong>通知</strong>触发回调。</li>
+</ul>
+<h5 id="阻塞和非阻塞"><a href="#阻塞和非阻塞" class="headerlink" title="阻塞和非阻塞"></a>阻塞和非阻塞</h5><ul>
+<li>阻塞：单个线程内遇到同步等待后，一直在原地等待同步方法返回结果，具体到IO操作就是，当试图对FD或socket进行IO读写时，若当时没有内容可读或无法写入，线程就一直等待，知道有内容可读或可写。</li>
+<li>非阻塞：单个线程内遇到同步等待后，不会原地等待，而是直接返回，具体到IO操作就是，当试图对DF或socket进行读写时，若当时没有内容可读或无法写入，读写函数立即返回，不会等待。</li>
+</ul>
+<p><strong>阻塞与非阻塞指的的是当不能进行读写（网卡满时的写/网卡空的时候的读）的时候，I/O 操作立即返回还是阻塞；同步异步指的是，当数据已经ready的时候，读写操作是同步读还是异步读。</strong></p>
+<h5 id="常见IO模型对比"><a href="#常见IO模型对比" class="headerlink" title="常见IO模型对比"></a>常见IO模型对比</h5><p>所有的系统IO分为2个阶段：<strong>等待IO就绪</strong> 和 <strong>实际IO操作</strong>，举例来说，socket.read()分为等待网卡buffer有可读数据和buffer中的数据复制到用户空间。</p>
+<ul>
+<li><p>如果是BIO，等待网卡IO就绪和复制数据到用户空间这两个步骤都是阻塞的；</p>
+</li>
+<li><p>如果是NIO，等待网卡IO就绪是非阻塞的，若网卡buffer中无可读数据，则直接返回；但复制数据到用户空间这个过程仍然是阻塞的，因此是同步非阻塞模型。</p>
+</li>
+<li><p>如果是AIO，这两个过程都是非阻塞的。</p>
+</li>
+</ul>
+<p>下图是几种常见的IO模型对比：</p>
+<p><img src="https://i.loli.net/2021/05/27/8mfnS3iXq67xlsw.png" alt="image-20210527151101643"></p>
+<h5 id="同步阻塞-BIO"><a href="#同步阻塞-BIO" class="headerlink" title="同步阻塞(BIO)"></a>同步阻塞(BIO)</h5><h6 id="场景"><a href="#场景" class="headerlink" title="场景"></a>场景</h6><ul>
+<li>连接数较小</li>
+<li>连接数比较固定</li>
+</ul>
+<h6 id="demo"><a href="#demo" class="headerlink" title="demo"></a>demo</h6><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        ExecutorService executorService = Executors.newFixedThreadPool(<span class="number">10</span>);</span><br><span class="line">        ServerSocket serverSocket = <span class="keyword">new</span> ServerSocket();</span><br><span class="line">        serverSocket.bind(<span class="keyword">new</span> InetSocketAddress(<span class="string">&quot;0.0.0.0&quot;</span>, <span class="number">8888</span>));</span><br><span class="line">        Socket socket;</span><br><span class="line">        <span class="keyword">while</span> ((socket = serverSocket.accept()) != <span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">final</span> Socket client = socket;</span><br><span class="line">            executorService.submit(() -&gt; &#123;</span><br><span class="line">                <span class="keyword">try</span> (InputStream is = client.getInputStream();</span><br><span class="line">                     OutputStream os = client.getOutputStream();) &#123;</span><br><span class="line">                    <span class="keyword">byte</span>[] bytes = <span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>];</span><br><span class="line">                    <span class="keyword">int</span> c;</span><br><span class="line">                    <span class="keyword">while</span> ((c = is.read(bytes)) != -<span class="number">1</span>) &#123;</span><br><span class="line">                        os.write(bytes, <span class="number">0</span>, c);</span><br><span class="line">                    &#125;</span><br><span class="line">                    os.flush();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">                    e.printStackTrace();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="同步非阻塞-NIO"><a href="#同步非阻塞-NIO" class="headerlink" title="同步非阻塞(NIO)"></a>同步非阻塞(NIO)</h5><h6 id="Buffer"><a href="#Buffer" class="headerlink" title="Buffer"></a>Buffer</h6><ul>
+<li>ByteBuffer、CharBuffer、DoubleBuffer、FloatBuffer…</li>
+<li>MappedByteBuffer(mmap)</li>
+<li>HeapByteBuffer</li>
+<li>DirectByteBuffer  通过FullGC回收内存</li>
+</ul>
+<h6 id="Channel"><a href="#Channel" class="headerlink" title="Channel"></a>Channel</h6><ul>
+<li>FileChannel(文件)</li>
+<li>DatagramChannel(UDP)</li>
+<li>SocketChannel、ServerSocketChannel(TCP)</li>
+</ul>
+<h6 id="Selector"><a href="#Selector" class="headerlink" title="Selector"></a>Selector</h6><ul>
+<li>selector.select() 是阻塞的，无论是通过操作系统的通知(epoll)还是不停地轮询(select，poll)</li>
+<li>selector.wakeup()解除阻塞在select上的线程，立即返回</li>
+</ul>
+<h6 id="场景-1"><a href="#场景-1" class="headerlink" title="场景"></a>场景</h6><ul>
+<li>连接数较多</li>
+<li>短连接</li>
+</ul>
+<h6 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h6><ul>
+<li>NIO依赖操作系统各自实现，JAVA原生的NIO编程复杂，不宜用；</li>
+<li>建议使用成熟的NIO框架入Netty，解决了NIO的很多陷阱，屏蔽了不同操作系统的差异。</li>
+</ul>
+<h6 id="demo-1"><a href="#demo-1" class="headerlink" title="demo"></a>demo</h6><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> IOException </span>&#123;</span><br><span class="line">       ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();</span><br><span class="line">       serverSocketChannel.configureBlocking(<span class="keyword">false</span>);</span><br><span class="line">       serverSocketChannel.bind(<span class="keyword">new</span> InetSocketAddress(<span class="string">&quot;0.0.0.0&quot;</span>, <span class="number">8888</span>));</span><br><span class="line">       Selector selector = Selector.open();</span><br><span class="line">       serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);</span><br><span class="line">       <span class="keyword">while</span> (<span class="keyword">true</span>) &#123;</span><br><span class="line">           selector.select();</span><br><span class="line">           Set&lt;SelectionKey&gt; selectionKeys = selector.selectedKeys();</span><br><span class="line">           Iterator&lt;SelectionKey&gt; iterator = selectionKeys.iterator();</span><br><span class="line">           <span class="keyword">while</span> (iterator.hasNext()) &#123;</span><br><span class="line">               SelectionKey key = iterator.next();</span><br><span class="line">               <span class="keyword">if</span> (!key.isValid()) &#123;</span><br><span class="line">                   <span class="keyword">continue</span>;</span><br><span class="line">               &#125;</span><br><span class="line">               <span class="keyword">if</span> (key.isAcceptable()) &#123;</span><br><span class="line">                   ServerSocketChannel serverChannel = ((ServerSocketChannel) key.channel());</span><br><span class="line">                   SocketChannel clientChannel = serverChannel.accept();</span><br><span class="line">                   clientChannel.configureBlocking(<span class="keyword">false</span>);</span><br><span class="line">                   clientChannel.register(selector, SelectionKey.OP_READ);</span><br><span class="line">               &#125; <span class="keyword">else</span> <span class="keyword">if</span> (key.isReadable()) &#123;</span><br><span class="line">                   SocketChannel clientChannel = (SocketChannel) key.channel();</span><br><span class="line">                   ByteBuffer buffer = ByteBuffer.wrap(<span class="keyword">new</span> <span class="keyword">byte</span>[<span class="number">1024</span>]);</span><br><span class="line">                   <span class="keyword">int</span> read = clientChannel.read(buffer);</span><br><span class="line">                   <span class="keyword">if</span> (read == -<span class="number">1</span>) &#123;</span><br><span class="line">                       key.cancel();</span><br><span class="line">                       clientChannel.close();</span><br><span class="line">                   &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                       buffer.flip();</span><br><span class="line">                       clientChannel.write(buffer);</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">           iterator.remove();</span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h6 id="构成"><a href="#构成" class="headerlink" title="构成"></a>构成</h6><ul>
+<li>Channel：全双工通道</li>
+<li>Buffer：数据缓冲区</li>
+<li>Selector：多路复用器</li>
+</ul>
+<h5 id="异步非阻塞-AIO"><a href="#异步非阻塞-AIO" class="headerlink" title="异步非阻塞(AIO)"></a>异步非阻塞(AIO)</h5><h6 id="场景-2"><a href="#场景-2" class="headerlink" title="场景"></a>场景</h6><ul>
+<li>连接数较多</li>
+<li>长连接</li>
+</ul>
+<p><em>参考</em>：</p>
+<p><a href="https://zhuanlan.zhihu.com/p/23488863">https://zhuanlan.zhihu.com/p/23488863</a></p>
+<p><a href="https://developer.aliyun.com/article/726698">https://developer.aliyun.com/article/726698</a></p>
+]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>NIO</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>hexo+TravisCI实现自动发布博客</title>
+    <url>/2021/05/26/hexo-TravisCI%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/</url>
+    <content><![CDATA[<p>以下步骤假设你已经安装好了必要的环境比如nodejs，掌握了hexo基本命令和原理，并且已经初始化好了hexo，也安装好了自定义主题。</p>
+<h5 id="Hexo原理"><a href="#Hexo原理" class="headerlink" title="Hexo原理"></a>Hexo原理</h5><p>Hexo简单来说能够把md渲染成html文件，然后把渲染后的结果发布到github Page上，我们只要关注博客内容即可。几个关键命令：</p>
+<ul>
+<li>hexo init(初始化hexo)</li>
+<li>hexo generate(开始渲染)</li>
+<li>hexo deploy(部署到github)</li>
+<li>hexo server(本地部署)</li>
+</ul>
+<h5 id="Hexo-TravisCI原理"><a href="#Hexo-TravisCI原理" class="headerlink" title="Hexo+TravisCI原理"></a>Hexo+TravisCI原理</h5><ul>
+<li>github Page使用的仓库名为username.github.io</li>
+<li>hexo渲染后的结果必须放在<strong>master</strong>分支，里面是渲染后的html</li>
+<li>新建一个<strong>hexo-source</strong>分支用来存放原始的文件，里面是渲染前的md文件</li>
+<li>平时在hexo-source分支上编写md文档，push到hexo-source远程分支上会触发TravisCI进行构建，把构建后的结果发布到master分支，实现push即发布的效果。</li>
+</ul>
+<h5 id="配置过程"><a href="#配置过程" class="headerlink" title="配置过程"></a>配置过程</h5><h6 id="配置github"><a href="#配置github" class="headerlink" title="配置github"></a>配置github</h6><ol>
+<li><p>在一个空白目录下执行 hexo init，初始化一个hexo目录</p>
+</li>
+<li><p>在此目录下执行git init，将hexo目录加入git管理</p>
+</li>
+<li><p>执行 git remote add origin <a href="https://github.com/username/username.github.io.git">https://github.com/username/username.github.io.git</a></p>
+</li>
+<li><p>执行 git checkout -b hexo-source，新建一个hexo-source分支</p>
+</li>
+<li><p>执行 git add .</p>
+</li>
+<li><p>执行 git commit -m “init”</p>
+</li>
+<li><p>执行 git push -u origin hexo-source</p>
+</li>
+<li><p>此时你仓库的远程分支会多出一个hexo-source分支，内容大致如下</p>
+<img src="https://i.loli.net/2021/05/26/fAh6SFjsEI3LX9U.png" alt="image-20210526152959057" style="zoom:50%;" /></li>
+</ol>
+<h6 id="配置TravisCI"><a href="#配置TravisCI" class="headerlink" title="配置TravisCI"></a>配置TravisCI</h6><p>这部分配置网上很多，可以参考以下博客：</p>
+<p><a href="https://segmentfault.com/a/1190000021987832">https://segmentfault.com/a/1190000021987832</a></p>
+<p><a href="https://juejin.cn/post/6844903517853843470">https://juejin.cn/post/6844903517853843470</a></p>
+<p>主要内容是配置github与TravisCI的token秘钥之类的，让TravisCI能够有权限访问我们的github仓库，不多赘述。主要是大家的.travis.yml各不相同，下面贴出我的配置：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">os:</span> <span class="string">linux</span></span><br><span class="line"><span class="attr">language:</span> <span class="string">node_js</span> </span><br><span class="line"><span class="attr">node_js:</span></span><br><span class="line">  <span class="bullet">-</span> <span class="number">14.17</span><span class="number">.0</span>  <span class="comment"># 使用 nodejs LTS v14.17.0</span></span><br><span class="line"><span class="attr">branches:</span></span><br><span class="line">  <span class="attr">only:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">hexo-source</span> <span class="comment"># 只监控 hexo-source 的 branch</span></span><br><span class="line"><span class="attr">cache:</span></span><br><span class="line">  <span class="attr">directories:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="string">node_modules</span> <span class="comment"># 缓存 node_modules 加快构建速度</span></span><br><span class="line"><span class="attr">before_script:</span> <span class="comment">## 根据你所用的主题和自定义的不同，这里会有所不同</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">npm</span> <span class="string">install</span> <span class="string">-g</span> <span class="string">hexo-cli</span> <span class="comment"># 在 CI 环境内安装 Hexo</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">npm</span> <span class="string">install</span> <span class="comment"># 在根目录安装站点需要的依赖</span></span><br><span class="line"><span class="attr">script:</span> </span><br><span class="line">  <span class="bullet">-</span> <span class="string">hexo</span> <span class="string">clean</span></span><br><span class="line">  <span class="bullet">-</span> <span class="string">hexo</span> <span class="string">generate</span> <span class="comment"># generate static files</span></span><br><span class="line"><span class="attr">deploy:</span> <span class="comment"># 根据个人情况，这里会有所不同</span></span><br><span class="line">  <span class="attr">provider:</span> <span class="string">pages</span></span><br><span class="line">  <span class="attr">skip_cleanup:</span> <span class="literal">true</span> <span class="comment"># 构建完成后不清除</span></span><br><span class="line">  <span class="attr">token:</span> <span class="string">$GH_TOKEN</span> <span class="comment"># 你刚刚设置的 token</span></span><br><span class="line">  <span class="attr">keep_history:</span> <span class="literal">true</span> <span class="comment"># 保存历史</span></span><br><span class="line">  <span class="comment">#fqdn: blog.ne0ng.page # 自定义域名，使用 username.github.io 可删除</span></span><br><span class="line">  <span class="attr">on:</span></span><br><span class="line">    <span class="attr">branch:</span> <span class="string">hexo-source</span> <span class="comment"># hexo 源文件所在的 branch</span></span><br><span class="line">  <span class="attr">local_dir:</span> <span class="string">public</span> </span><br><span class="line">  <span class="attr">target_branch:</span> <span class="string">master</span> <span class="comment"># 存放生成站点文件的 branch，使用 username.github.io 必须是 master</span></span><br></pre></td></tr></table></figure>
+
+<p>注意.travis.yml配置是写在hexo-source分支的， 写完后git push到远程分支，正常的话就会触发TravisCI构建了。</p>
+<p>Tips：</p>
+<ul>
+<li>git push触发TravisCI构建前，TravisCi会发送一封确认邮件到github绑定的邮箱，不在邮件点确认的话也是不会触发构建的，有时候会很久都接受不到邮件，貌似是TravisCI的消息队列的问题，只能慢慢等了。</li>
+</ul>
+<img src="https://i.loli.net/2021/05/26/JdDbcA76zhuSV2G.png" alt="image-20210526154123366" style="zoom:50%;" />
+
+<ul>
+<li>构建会有延迟，可以在TravisCI中看构建过程</li>
+</ul>
+<img src="https://i.loli.net/2021/05/26/HxFGZKep3wyVIrJ.png" alt="image-20210526160021058" style="zoom:50%;" />
+
+]]></content>
+      <tags>
+        <tag>hexo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JVM配置GC参数</title>
+    <url>/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/</url>
+    <content><![CDATA[<h5 id="GC日志配置参考"><a href="#GC日志配置参考" class="headerlink" title="GC日志配置参考"></a>GC日志配置参考</h5><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"># 必备</span><br><span class="line">-XX:+PrintGCDetails </span><br><span class="line">-XX:+PrintGCDateStamps</span><br><span class="line"># 打印对象年龄分布情况</span><br><span class="line">-XX:+PrintTenuringDistribution </span><br><span class="line"># 每次GC时，对比一下GC前后堆内存情况</span><br><span class="line">-XX:+PrintHeapAtGC </span><br><span class="line"># 打印STW时间,是GC最重要的指标</span><br><span class="line">-XX:+PrintGCApplicationStoppedTime</span><br><span class="line">    </span><br><span class="line"># GC日志输出的文件路径，%t表示以时间戳命名文件，避免gc日志每次重启被覆盖</span><br><span class="line">-Xloggc:/path/to/gc-%t.log</span><br><span class="line"># 开启日志文件分割</span><br><span class="line">-XX:+UseGCLogFileRotation </span><br><span class="line"># 最多分割几个文件，超过之后从头文件开始写</span><br><span class="line">-XX:NumberOfGCLogFiles=<span class="number">14</span></span><br><span class="line"># 每个文件上限大小，超过就触发分割</span><br><span class="line">-XX:GCLogFileSize=100M</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>Java</category>
+      </categories>
+      <tags>
+        <tag>GC</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>分布式一致性算法</title>
+    <url>/2021/05/25/%E5%88%86%E5%B8%83%E5%BC%8F%E4%B8%80%E8%87%B4%E6%80%A7%E7%AE%97%E6%B3%95/</url>
+    <content><![CDATA[<h2 id="分布式一致性协议"><a href="#分布式一致性协议" class="headerlink" title="分布式一致性协议"></a>分布式一致性协议</h2><h4 id="CAP理论"><a href="#CAP理论" class="headerlink" title="CAP理论"></a>CAP理论</h4><ul>
+<li>Consistency(<strong>一致性</strong>)：数据更新保持一致，可分为强一致性和最终一致性</li>
+<li>Availability(<strong>可用性</strong>)：较好的响应性能，能容忍的延迟</li>
+<li>Partition tolerance(<strong>分区容错性</strong>)：部分分区故障时仍能够保证一致性和可用性。</li>
+</ul>
+<h4 id="BASE理论"><a href="#BASE理论" class="headerlink" title="BASE理论"></a>BASE理论</h4><ul>
+<li>Basically Available(<strong>基本可用</strong>)：损失部分可用性，比如响应时间变长或部分功能服务降级。</li>
+<li>Soft state(<strong>软状态</strong>)：允许系统在不同节点的数据副本之间进行数据同步的过程存在延迟。</li>
+<li>Eventually consistent(<strong>最终一致性</strong>)</li>
+</ul>
+<h4 id="2PC-两阶段提交"><a href="#2PC-两阶段提交" class="headerlink" title="2PC-两阶段提交"></a>2PC-两阶段提交</h4><hr>
+<h6 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h6><ul>
+<li>投票阶段<ol>
+<li>协调者询问参与者是否可以执行</li>
+<li>参与者执行事务并记录undo和redo日志</li>
+<li>参与者回复协调者YES/NO</li>
+</ol>
+</li>
+<li>提交阶段<ol>
+<li>协调者根据收到的ACK发送提交请求或者回滚请求</li>
+<li>参与者根据请求提交事务或回滚事务，并返回ACK</li>
+<li>协调者根据ACK判断事务是否完成</li>
+</ol>
+</li>
+</ul>
+<p>Tips: Undo日志–事务回滚恢复时使用；Redo日志–服务器宕机时数据恢复</p>
+<h6 id="优点"><a href="#优点" class="headerlink" title="优点"></a>优点</h6><ul>
+<li>实现简单</li>
+<li>强一致性</li>
+</ul>
+<h6 id="缺点"><a href="#缺点" class="headerlink" title="缺点"></a>缺点</h6><ul>
+<li>单点故障，协调者宕机后，参与者可能因为一直收不到命令而阻塞</li>
+<li>同步阻塞等待，降低吞吐量</li>
+<li>提交阶段若部分参与者没有doCommit，导致数据不一致</li>
+</ul>
+<h4 id="3PC"><a href="#3PC" class="headerlink" title="3PC"></a>3PC</h4><hr>
+<h6 id="实现-1"><a href="#实现-1" class="headerlink" title="实现"></a>实现</h6><ul>
+<li>将2PC的第一阶段拆分为两个阶段，先发起事务询问，再执行事务。</li>
+<li>协调者和参与者都引入超时机制，避免持续阻塞。</li>
+</ul>
+<h6 id="优点-1"><a href="#优点-1" class="headerlink" title="优点"></a>优点</h6><ul>
+<li>降低了2PC的同步阻塞范围。若doCommit阶段因为网络问题参与者没有收到协调者的doCommit请求，在超时过后参与者也会提交事务。</li>
+<li>解决单点问题。doCommit阶段有可能会出现2中异常：1.协调者宕机；2.协调者与参与者网络故障。斗湖导致参与者无法收到doCommit请求，但在超时后都会自动提交事务。</li>
+</ul>
+<h6 id="缺点-1"><a href="#缺点-1" class="headerlink" title="缺点"></a>缺点</h6><ul>
+<li>有点同样是缺点，在doCommit阶段若参与者与协调者无法正常通信，超时后参与者都会提交事务，可能会导致数据不一致。</li>
+</ul>
+<h6 id="应用"><a href="#应用" class="headerlink" title="应用"></a>应用</h6><ul>
+<li>Chubby-Google的分布式锁</li>
+<li>Zookeeper</li>
+<li>Mysql5.7+ MySQL Group Replication</li>
+</ul>
+<p>完整的分布式一致性算法必须要考虑协调者宕机的情况，要能够投票选择出新的协调者并保持状态同步。因此严格意义上，2PC和3PC都只能是算未完全体的分布式一致性算法，因为协调者都要提前指定的，当协调者宕机后无法自动投票出新的协调者。</p>
+<h4 id="Paxos算法"><a href="#Paxos算法" class="headerlink" title="Paxos算法"></a>Paxos算法</h4><hr>
+<h6 id="节点角色"><a href="#节点角色" class="headerlink" title="节点角色"></a>节点角色</h6><p>有三种角色，每个节点可以同时属于多个角色。</p>
+<ul>
+<li>Proposers(提议者) ：提出提案。包括提案编号和提议的value</li>
+<li>Acceptor(接受者)：参与决策，过半接受提案才被批准</li>
+<li>Leaners(学习者)：不参与决策，只能学习被批准的提案</li>
+</ul>
+<h6 id="实现-2"><a href="#实现-2" class="headerlink" title="实现"></a>实现</h6><ul>
+<li>Prepare阶段<ol>
+<li>Proposer选择一个提案编号N，向半数以上的Acceptor发送编号N的Prepare请求</li>
+<li>Acceptor收到一个编号为N的Prepare请求，比较自己已经响应过的最大的Prepare请求编号M，若N&gt;M，则接受提案，并把M放在Response中返回给Proposer，并承诺不再接受任何编号&lt;N的Prepare请求</li>
+</ol>
+</li>
+<li>Accept阶段<ol>
+<li>若Proposer收到半数以上Acceptor针对其编号N的Response，则发送一个针对**[N, V]**提案的Accept请求给Acceptor。V是上个阶段中Proposer收到的Response中最大编号值。</li>
+<li>若Acceptor收到针对编号N的提案的Accept请求，比较自己已经响应过的最大的Prepare请求编号M，若N&gt;M，则接受此提案。</li>
+</ol>
+</li>
+</ul>
+<h4 id="Raft算法"><a href="#Raft算法" class="headerlink" title="Raft算法"></a>Raft算法</h4><hr>
+<h6 id="节点角色-1"><a href="#节点角色-1" class="headerlink" title="节点角色"></a>节点角色</h6><p>有三种角色，每个节点同时只能属于一个角色，正常运行时只有Leader和Follower角色，选举过程中才会有Candidate角色。</p>
+<ul>
+<li>Leader：接受请求，向Follower同步日志，当日志同步到过半Follower上之后告诉Follower提交日志。</li>
+<li>Follower：接受并持久化Leader同步过来的日志，发送到Follower的客户端请求会被转发到Leader。</li>
+<li>Candidate：Leader选举过程中的临时角色，Follower在超时时间内(100~300ms)没有收到Leader的心跳，随机等待一段时间后发起一次选举。</li>
+</ul>
+<h6 id="实现-3"><a href="#实现-3" class="headerlink" title="实现"></a>实现</h6><ul>
+<li>Leader选举阶段<ol>
+<li>初始时所有节点都是Follower，一段时间后大家都没有收到Leader的心跳，则所有Follower节点都<strong>随机等待一段时间</strong>后发起一次选举；</li>
+<li>Follower将其当前<strong>term+1</strong>，然后转换成Candidate角色，向其他Candidate发送投票请求；</li>
+<li>若某个Follower收到多数选票，则升级成Leader；若收到Leader消息，说明有其他节点已经升级为Leader；若没有节点获得过半选票，Leader选举失败，超时后进行下一轮选举。</li>
+</ol>
+</li>
+<li>日志同步(2PC)<ol>
+<li>Leader收到客户端或其他Follower节点转发过来的需要同步的值，会跟随心跳一起广播给所有Follower节点；</li>
+<li>Follower节点写入日志后，返回响应，当Leader收到过半的成功响应后，发送commit请求；</li>
+<li>Follower节点收到commit请求后提交事务，返回响应；Leader收到过半commit成功后，同步结束。</li>
+</ol>
+</li>
+</ul>
+<img src="https://i.loli.net/2021/05/25/2RfsJKVXgLyEtqh.png" alt="image-20210525144955669"  />
+]]></content>
+      <categories>
+        <category>分布式</category>
+      </categories>
+      <tags>
+        <tag>分布式</tag>
+        <tag>2PC</tag>
+        <tag>3PC</tag>
+        <tag>Paxos</tag>
+        <tag>Raft</tag>
+        <tag>事务</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>disruptor探索</title>
+    <url>/2021/10/30/disruptor%E6%8E%A2%E7%B4%A2/</url>
+    <content><![CDATA[<h2 id="从Logger4j2引出Disruptor"><a href="#从Logger4j2引出Disruptor" class="headerlink" title="从Logger4j2引出Disruptor"></a>从Logger4j2引出Disruptor</h2><p>最近把日志框架从logback切换到了log4j2，号称在多线程环境下性能优于log4j和logback数十倍，下面是log4j2官网提供的经典峰值吞吐量对比图。Log4j 2的 Async Loggers 支持使用无锁数据结构（Disruptor），而 Logback、 Log4j 则只支持 ArrayBlockingQueue，多线程下无法避免锁争用，从而导致吞吐量大大降低。<br><img src="https://i.loli.net/2021/10/31/HzdbZD95w4CFip1.png" alt="image-20211031110132988"></p>
+<h2 id="Disruptor是什么"><a href="#Disruptor是什么" class="headerlink" title="Disruptor是什么"></a>Disruptor是什么</h2><blockquote>
+<p>Disruptor是一个高性能的无锁并发框架，提供了一种线程消息传递的方式。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>多线程</category>
+      </categories>
+      <tags>
+        <tag>disruptor</tag>
+      </tags>
+  </entry>
+</search>
