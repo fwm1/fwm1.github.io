@@ -468,6 +468,97 @@ private void processEvents()
 
 
 
+## log4j2使用Disruptor
+
+#### AsyncLogger#logWithThreadLocalTranslator
+
+```java
+private void logWithThreadLocalTranslator(final String fqcn, final Level level, final Marker marker,
+            final Message message, final Throwable thrown) {
+        // Implementation note: this method is tuned for performance. MODIFY WITH CARE!
+    final RingBufferLogEventTranslator translator = getCachedTranslator();
+    initTranslator(translator, fqcn, level, marker, message, thrown);
+    initTranslatorThreadValues(translator);
+    publish(translator);
+}
+// 可以看到日志时间的发布交给了loggerDisruptor
+private void publish(final RingBufferLogEventTranslator translator) {
+    if (!loggerDisruptor.tryPublish(translator)) {
+        handleRingBufferFull(translator);
+    }
+}
+
+```
+
+#### AsyncLoggerDisruptor
+
+```java
+...
+private volatile Disruptor<RingBufferLogEvent> disruptor;
+private AsyncQueueFullPolicy asyncQueueFullPolicy;
+private int ringBufferSize;
+...
+    
+ 	@Override
+    public synchronized void start() {
+   	...
+    //获取相关配置
+    ringBufferSize = DisruptorUtil.calculateRingBufferSize("AsyncLogger.RingBufferSize");
+    final WaitStrategy waitStrategy = DisruptorUtil.createWaitStrategy("AsyncLogger.WaitStrategy");
+    final ThreadFactory threadFactory = new Log4jThreadFactory("AsyncLogger[" + contextName + "]", true, Thread.NORM_PRIORITY) {
+        @Override
+        public Thread newThread(final Runnable r) {
+            final Thread result = super.newThread(r);
+            backgroundThreadId = result.getId();
+            return result;
+        }
+    };
+    asyncQueueFullPolicy = AsyncQueueFullPolicyFactory.create();
+    // 创建根据相关配置Disruptor
+    disruptor = new Disruptor<>(RingBufferLogEvent.FACTORY, ringBufferSize, threadFactory, ProducerType.MULTI,
+                                waitStrategy);
+    //设置异常处理器
+    final ExceptionHandler<RingBufferLogEvent> errorHandler = DisruptorUtil.getAsyncLoggerExceptionHandler();
+    disruptor.setDefaultExceptionHandler(errorHandler);
+    //设置事件处理器，这里是具体的日志处理逻辑
+    final RingBufferLogEventHandler[] handlers = {new RingBufferLogEventHandler()};
+    disruptor.handleEventsWith(handlers);
+    //启动Disruptor
+    disruptor.start();
+	...
+	}
+
+	//AsyncLoggerDisruptor#tryPublish
+	boolean tryPublish(final RingBufferLogEventTranslator translator) {
+        try {
+            // Note: we deliberately access the volatile disruptor field afresh here.
+            // Avoiding this and using an older reference could result in adding a log event to the disruptor after it
+            // was shut down, which could cause the publishEvent method to hang and never return.
+            return disruptor.getRingBuffer().tryPublishEvent(translator);
+        } catch (final NullPointerException npe) {
+            // LOG4J2-639: catch NPE if disruptor field was set to null in stop()
+            logWarningOnNpeFromDisruptorPublish(translator);
+            return false;
+        }
+    }
+
+	//通过RingBufferLogEvent#onEvent最终调用最终的写日志逻辑
+    public void actualAsyncLog(final RingBufferLogEvent event) {
+        final LoggerConfig privateConfigLoggerConfig = privateConfig.loggerConfig;
+        final List<Property> properties = privateConfigLoggerConfig.getPropertyList();
+
+        if (properties != null) {
+            onPropertiesPresent(event, properties);
+        }
+		//最终写日志逻辑
+        privateConfigLoggerConfig.getReliabilityStrategy().log(this, event);
+    }
+
+
+```
+
+
+
 ## *参考*
 
 https://tech.meituan.com/2016/11/18/disruptor.html
