@@ -191,7 +191,7 @@ public long next(int n)
 
 ## Disruptor源码初探
 
-![image-20211127163808157](C:\Users\15118\AppData\Roaming\Typora\typora-user-images\image-20211127163808157.png)
+![image-20211127181001523](https://i.loli.net/2021/11/27/1mvxdBl67eziOcI.png)
 
 ### 相关类和接口
 
