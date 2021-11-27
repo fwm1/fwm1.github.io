@@ -466,3 +466,10 @@ private void processEvents()
     }
 ```
 
+
+
+## *参考*
+
+https://tech.meituan.com/2016/11/18/disruptor.html
+
+https://mp.weixin.qq.com/s/-7RXNf8d5bDywbTisXOXDw
