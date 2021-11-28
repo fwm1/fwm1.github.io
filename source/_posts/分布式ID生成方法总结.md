@@ -251,7 +251,10 @@ public class SnowFlakeShortUrl {
 - 如果`abs(时间戳平均值-当前机器系统时间) < 阈值`，说明当前机器时间正常，启动服务并且写入到`temporary/${self}`维持租约； 否则说明当前机器发生偏移，启动失败。
 - 每隔一段时间(3s)上报自身系统时间写入`leaf_forever/${self}`
 
-由于强依赖时钟，对时间的要求比较敏感，在机器工作时NTP同步也会造成秒级别的回退，建议可以直接关闭NTP同步。要么在时钟回拨的时候直接不提供服务直接返回ERROR_CODE，等时钟追上即可。**或者做一层重试，然后上报报警系统，更或者是发现有时钟回拨之后自动摘除本身节点并报警**
+由于强依赖时钟，对时间的要求比较敏感，在机器工作时NTP同步也会造成秒级别的回退，建议可以直接关闭NTP同步。
+
+- **要么在时钟回拨的时候直接不提供服务直接返回ERROR_CODE，等时钟追上即可**
+- **或者做一层重试，然后上报报警系统，更或者是发现有时钟回拨之后自动摘除本身节点并报警**
 
 ```java
 //发生了回拨，此刻时间小于上次发号时间
@@ -281,6 +284,118 @@ public class SnowFlakeShortUrl {
 
 缺点：依赖第三方组件，架构较为复杂
 
+#### 雪花算法段号模式
+
+雪花算法的sequence也可以采用段号模式，减少client去服务端拿id的次数。
+
+##### Client
+
+- 利用一个队列存储多个id段，每个id段包含此id段的StartId和EndId
+- Client每次获取nextId时，先取出队列头的id段，如果当前id处于此id段范围内，只要把当前id段自增+1返回即可
+- 如果当前id小于队列头id段的StartId， 则返回此StartId，因为这已经是能拿到的最小id
+- 如果当前id大于队列头id段的EndId，说明此id段已经被取完了， 需要取下一个id段
+
+```java
+private long currentId;
+private Queue<IdSeg> idSegments = new ConcurrentLinkedQueue<>();
+
+public synchronized Long getNextId() {
+    IdSeg first = idSegments.peek();
+    if(first == null) {
+        return null;
+    }
+    if(currentId < first.startId()) {
+        currentId = first.startId();
+    } else if(first.startId() <= currentId && first.endId() > currentId) {
+        currentId++; 
+    } else {
+        idSegments.remove();
+        first = idSegments.peek();
+        if(first == null) {
+            //所有的id段都用完了，从server重新拿去id段
+            getIdSegFromServer();
+            getNextId();
+        }
+        currentId = first.startId();
+    }
+    return currentId;
+}
+```
+
+##### Server
+
+- 通过while+CAS生成id段返回给client
+- 比较lastid的lastTimestamp和当前curTimestamp，如果curTimestamp > lastTimestamp，那么sequence部分从0开始，取size个，则id段范围是[0，size]
+- 如果curTimestamp == lastTimestamp，则 sequence = (lastSequence+ 1) & SEQUENCE_MASK
+- 如果curTimestamp < lastTimestamp，说明发生了时钟回拨，抛出异常
+
+```java
+//上一次
+private AtomicLong lastIdRef;
+
+
+
+// 获取id段
+public Queue<IdSeg> getIdSegments(int fetchSize) {
+    int size = fetchSize;
+    Queue<IdSeg> ids = new ConcurrentLinkedQueue<>();
+    while(size > 0) {
+        //获取下一个id段，预期id段的长度是size
+        IdSeg newIdSeg = getNextIdSegment(size);
+        if(newIdSeg != null) {
+            ids.add(newIdSeg);
+            size -= newIdSeg.endId() - newIdSeg.startId() + 1;
+        }
+    }
+    return ids;
+}
+
+//获取下一个id段，段长度是size
+private IdSeg getNextIdSegment(int size) {
+    long lastId = lastId.get();
+    long lastTimestampt = getLastTimestampt();
+    long curTimestampt = System.currentMillsTimestampt();
+    long lastSequence = getLastSequence();
+    long startSequence;
+    long endSequence;
+    if(curTimestamp > lastTimestamp) {
+        startSequence = 0L;
+    } else if (curTimestamp < lastTimestamp) {
+        throw new RuntimeException("发生了时钟回拨");
+    } else {
+        startSequence = (lastSequence + 1) & SEQUENCE_MASK;
+        if(startSequence == 0) {
+            //说明当前时间毫秒，序号已经取完，返回null重新获取
+            return null;
+        }
+        curTimestamp = lastTimestampt;
+    }
+    //如果当前时间戳下剩余序号大于size， 则序号取到startSequence + size - 1； 否则返回最大序号
+    if(MAX_SEQUENCE - startSequence + 1 > size) {
+        endSequence = startSequence + size - 1;
+    } else {
+        endSequence = MAX_SEQUENCE;
+    }
+    long endId = generateId(endSequence);
+    if(lastIdRef.compareAndSet(lastId, endId)) {
+        return new Idset(generateId(startSequence), endId);
+    } else {
+        //CAS失败，说明有其他线程更新了lastId，返回null重新获取
+        return null;
+    }
+}
+
+//获取雪花算法生成的id
+private long generateId(long sequence) {
+    return (currTimeStamp - START_TIMESTAMP) << TIMESTAMP_LEFT //时间戳部分
+                | dataCenterId << DATA_CENTER_LEFT       //数据中心部分
+                | machineId << MACHINE_LEFT             //机器标识部分
+                | sequence;                             //序列号部分
+}
+```
+
+
+
 ### 借助Redis
 
 利用`redis`的 `incr`命令实现ID的原子性自增。需要考虑redis持久化的问题。
@@ -294,7 +409,7 @@ public class SnowFlakeShortUrl {
 
 
 
-参考：
+### *参考：*
 
 [美团Leaf]: https://tech.meituan.com/2017/04/21/mt-leaf.html
 
