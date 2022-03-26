@@ -11,7 +11,7 @@
         name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1"
       />
-      <title>JVM配置GC参数 |  qncwzw&#39;s Blog</title>
+      <title>java |  qncwzw&#39;s Blog</title>
   <meta name="generator" content="hexo-theme-ayer">
       
       <link rel="shortcut icon" href="/images/F.svg" />
@@ -53,189 +53,58 @@
       
     <main class="content on">
       <section class="outer">
-  <article
-  id="post-JVM配置GC参数"
-  class="article article-type-post"
-  itemscope
-  itemprop="blogPost"
-  data-scroll-reveal
->
-  <div class="article-inner">
+  
+  
+  <article class="articles">
     
-    <header class="article-header">
+    
+    <h1 class="page-type-title">java</h1>
+    
+    
+  
+  
+  
+  
+  
+  
+  <div class="archives-wrap">
+    <div class="archive-year-wrap">
+      <a href="/archives/2022" class="archive-year">2022</a>
+    </div>
+    <div class="archives">
+      
+      <article class="archive-article archive-type-post">
+  <div class="archive-article-inner">
+    <header class="archive-article-header">
+      <a href="/2022/03/24/Java%E5%A4%9A%E7%B2%92%E5%BA%A6%E9%94%81/" class="archive-article-date">
+  <time datetime="2022-03-24T12:38:21.000Z" itemprop="datePublished">03/24</time>
+</a>
        
-<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
-  JVM配置GC参数
-</h1>
+<h2 itemprop="name">
+  <a class="archive-article-title" href="/2022/03/24/Java%E5%A4%9A%E7%B2%92%E5%BA%A6%E9%94%81/"
+    >Java细粒度锁</a> 
+</h2>
  
 
-      
     </header>
-     
-    <div class="article-meta">
-      <a href="/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" class="article-date">
-  <time datetime="2021-06-07T15:15:58.000Z" itemprop="datePublished">2021-06-07</time>
-</a> 
+    
+      
   <div class="article-category">
-    <a class="article-category-link" href="/categories/Java/">Java</a>
-  </div>
-  
-<div class="word_count">
-    <span class="post-time">
-        <span class="post-meta-item-icon">
-            <i class="ri-quill-pen-line"></i>
-            <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">147</span>
-        </span>
-    </span>
-
-    <span class="post-time">
-        &nbsp; | &nbsp;
-        <span class="post-meta-item-icon">
-            <i class="ri-book-open-line"></i>
-            <span class="post-meta-item-text"> 阅读时长≈</span>
-            <span class="post-count">1 分钟</span>
-        </span>
-    </span>
-</div>
- 
-    </div>
-      
-    <div class="tocbot"></div>
-
-
-
-
-  
-    <div class="article-entry" itemprop="articleBody">
-       
-  <h5 id="GC日志配置参考"><a href="#GC日志配置参考" class="headerlink" title="GC日志配置参考"></a>GC日志配置参考</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"># 必备</span><br><span class="line">-XX:+PrintGCDetails </span><br><span class="line">-XX:+PrintGCDateStamps</span><br><span class="line"># 打印对象年龄分布情况</span><br><span class="line">-XX:+PrintTenuringDistribution </span><br><span class="line"># 每次GC时，对比一下GC前后堆内存情况</span><br><span class="line">-XX:+PrintHeapAtGC </span><br><span class="line"># 打印STW时间,是GC最重要的指标</span><br><span class="line">-XX:+PrintGCApplicationStoppedTime</span><br><span class="line">    </span><br><span class="line"># GC日志输出的文件路径，%t表示以时间戳命名文件，避免gc日志每次重启被覆盖</span><br><span class="line">-Xloggc:/path/to/gc-%t.log</span><br><span class="line"># 开启日志文件分割</span><br><span class="line">-XX:+UseGCLogFileRotation </span><br><span class="line"># 最多分割几个文件，超过之后从头文件开始写</span><br><span class="line">-XX:NumberOfGCLogFiles=<span class="number">14</span></span><br><span class="line"># 每个文件上限大小，超过就触发分割</span><br><span class="line">-XX:GCLogFileSize=100M</span><br></pre></td></tr></table></figure>
-
- 
-      <!-- reward -->
-      
-    </div>
-    
-
-    <!-- copyright -->
-    
-    <div class="declare">
-      <ul class="post-copyright">
-        <li>
-          <i class="ri-copyright-line"></i>
-          <strong>版权声明： </strong>
-          
-          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
-          
-        </li>
-      </ul>
-    </div>
-    
-    <footer class="article-footer">
-       
-<div class="share-btn">
-      <span class="share-sns share-outer">
-        <i class="ri-share-forward-line"></i>
-        分享
-      </span>
-      <div class="share-wrap">
-        <i class="arrow"></i>
-        <div class="share-icons">
-          
-          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
-            <i class="ri-weibo-fill"></i>
-          </a>
-          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
-            <i class="ri-wechat-fill"></i>
-          </a>
-          <a class="qq share-sns" href="javascript:;" data-type="qq">
-            <i class="ri-qq-fill"></i>
-          </a>
-          <a class="douban share-sns" href="javascript:;" data-type="douban">
-            <i class="ri-douban-line"></i>
-          </a>
-          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
-            <i class="icon icon-qzone"></i>
-          </a> -->
-          
-          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
-            <i class="ri-facebook-circle-fill"></i>
-          </a>
-          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
-            <i class="ri-twitter-fill"></i>
-          </a>
-          <a class="google share-sns" href="javascript:;" data-type="google">
-            <i class="ri-google-fill"></i>
-          </a>
-        </div>
-      </div>
-</div>
-
-<div class="wx-share-modal">
-    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
-    <p>扫一扫，分享到微信</p>
-    <div class="wx-qrcode">
-      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" alt="微信分享二维码">
-    </div>
-</div>
-
-<div id="share-mask"></div>  
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GC/" rel="tag">GC</a></li></ul>
-
-    </footer>
+    <a class="article-category-link" href="/categories/java/">java</a>
   </div>
 
-   
-  <nav class="article-nav">
-    
-      <a href="/2021/10/30/disruptor%E6%8E%A2%E7%B4%A2/" class="article-nav-link">
-        <strong class="article-nav-caption">上一篇</strong>
-        <div class="article-nav-title">
-          
-            disruptor探索
-          
-        </div>
-      </a>
     
     
-      <a href="/2021/05/26/hexo-TravisCI%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/" class="article-nav-link">
-        <strong class="article-nav-caption">下一篇</strong>
-        <div class="article-nav-title">hexo+TravisCI实现自动发布博客</div>
-      </a>
-    
-  </nav>
-
-  
-   
-<div class="gitalk" id="gitalk-container"></div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.css">
-
-
-<script src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script>
-
-
-<script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
-
-<script type="text/javascript">
-  var gitalk = new Gitalk({
-    clientID: 'feaf79090d8f386c485d',
-    clientSecret: 'bc2947f6035e8a7e51a05dcb4f66e5ecf9b54940',
-    repo: 'fwm1.github.io',
-    owner: 'fwm1',
-    admin: ['fwm1'],
-    // id: location.pathname,      // Ensure uniqueness and length less than 50
-    id: md5(location.pathname),
-    distractionFreeMode: false,  // Facebook-like distraction free mode
-    pagerDirection: 'last'
-  })
-
-  gitalk.render('gitalk-container')
-</script>
-
-     
+  </div>
 </article>
+      
+      
+    </div>
+  </div>
+  
+  
 
+  
 </section>
       <footer class="footer">
   <div class="outer">
@@ -368,22 +237,6 @@
 <script src="/js/lazyload.min.js"></script>
 
 <!-- Tocbot -->
- 
-<script src="/js/tocbot.min.js"></script>
-
-<script>
-  tocbot.init({
-    tocSelector: ".tocbot",
-    contentSelector: ".article-entry",
-    headingSelector: "h1, h2, h3, h4, h5, h6",
-    hasInnerContainers: true,
-    scrollSmooth: true,
-    scrollContainer: "main",
-    positionFixedSelector: ".tocbot",
-    positionFixedClass: "is-position-fixed",
-    fixedSidebarOffset: "auto",
-  });
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
 <link

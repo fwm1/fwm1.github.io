@@ -11,7 +11,7 @@
         name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1"
       />
-      <title>JVM配置GC参数 |  qncwzw&#39;s Blog</title>
+      <title>Java细粒度锁 |  qncwzw&#39;s Blog</title>
   <meta name="generator" content="hexo-theme-ayer">
       
       <link rel="shortcut icon" href="/images/F.svg" />
@@ -54,7 +54,7 @@
     <main class="content on">
       <section class="outer">
   <article
-  id="post-JVM配置GC参数"
+  id="post-Java多粒度锁"
   class="article article-type-post"
   itemscope
   itemprop="blogPost"
@@ -65,7 +65,7 @@
     <header class="article-header">
        
 <h1 class="article-title sea-center" style="border-left:0" itemprop="name">
-  JVM配置GC参数
+  Java细粒度锁
 </h1>
  
 
@@ -73,11 +73,11 @@
     </header>
      
     <div class="article-meta">
-      <a href="/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" class="article-date">
-  <time datetime="2021-06-07T15:15:58.000Z" itemprop="datePublished">2021-06-07</time>
+      <a href="/2022/03/24/Java%E5%A4%9A%E7%B2%92%E5%BA%A6%E9%94%81/" class="article-date">
+  <time datetime="2022-03-24T12:38:21.000Z" itemprop="datePublished">2022-03-24</time>
 </a> 
   <div class="article-category">
-    <a class="article-category-link" href="/categories/Java/">Java</a>
+    <a class="article-category-link" href="/categories/java/">java</a>
   </div>
   
 <div class="word_count">
@@ -85,7 +85,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">147</span>
+            <span class="post-count">354</span>
         </span>
     </span>
 
@@ -109,8 +109,23 @@
   
     <div class="article-entry" itemprop="articleBody">
        
-  <h5 id="GC日志配置参考"><a href="#GC日志配置参考" class="headerlink" title="GC日志配置参考"></a>GC日志配置参考</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"># 必备</span><br><span class="line">-XX:+PrintGCDetails </span><br><span class="line">-XX:+PrintGCDateStamps</span><br><span class="line"># 打印对象年龄分布情况</span><br><span class="line">-XX:+PrintTenuringDistribution </span><br><span class="line"># 每次GC时，对比一下GC前后堆内存情况</span><br><span class="line">-XX:+PrintHeapAtGC </span><br><span class="line"># 打印STW时间,是GC最重要的指标</span><br><span class="line">-XX:+PrintGCApplicationStoppedTime</span><br><span class="line">    </span><br><span class="line"># GC日志输出的文件路径，%t表示以时间戳命名文件，避免gc日志每次重启被覆盖</span><br><span class="line">-Xloggc:/path/to/gc-%t.log</span><br><span class="line"># 开启日志文件分割</span><br><span class="line">-XX:+UseGCLogFileRotation </span><br><span class="line"># 最多分割几个文件，超过之后从头文件开始写</span><br><span class="line">-XX:NumberOfGCLogFiles=<span class="number">14</span></span><br><span class="line"># 每个文件上限大小，超过就触发分割</span><br><span class="line">-XX:GCLogFileSize=100M</span><br></pre></td></tr></table></figure>
+  <h3 id="从WeakHashMap实现分段锁"><a href="#从WeakHashMap实现分段锁" class="headerlink" title="从WeakHashMap实现分段锁"></a>从WeakHashMap实现分段锁</h3><p>当弱引用指向的对象引用被释放之后 Java 会在下一次的 GC 将这弱引用指向的对象回收掉，在经过 GC 之后，当弱引用指向的对象被回收时，弱引用将会进入创建时指定的队列。</p>
+<p>WeakHashMap使用<strong>弱引用</strong>作为 key，通过轮询referenceQueue清理被gc的弱引用对象。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">expungeStaleEntries</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (Object x; (x = queue.poll()) != <span class="keyword">null</span>; ) &#123;</span><br><span class="line">            <span class="keyword">synchronized</span> (queue) &#123;</span><br><span class="line">                <span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line">                    Entry&lt;K,V&gt; e = (Entry&lt;K,V&gt;) x;</span><br><span class="line">                <span class="keyword">int</span> i = indexFor(e.hash, table.length);</span><br><span class="line"></span><br><span class="line">                Entry&lt;K,V&gt; prev = table[i];</span><br><span class="line">                Entry&lt;K,V&gt; p = prev;</span><br><span class="line">                <span class="keyword">while</span> (p != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    Entry&lt;K,V&gt; next = p.next;</span><br><span class="line">                    <span class="keyword">if</span> (p == e) &#123;</span><br><span class="line">                        <span class="keyword">if</span> (prev == e)</span><br><span class="line">                            table[i] = next;</span><br><span class="line">                        <span class="keyword">else</span></span><br><span class="line">                            prev.next = next;</span><br><span class="line">                        <span class="comment">// Must not null out e.next;</span></span><br><span class="line">                        <span class="comment">// stale entries may be in use by a HashIterator</span></span><br><span class="line">                        e.value = <span class="keyword">null</span>; <span class="comment">// Help GC</span></span><br><span class="line">                        size--;</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    prev = p;</span><br><span class="line">                    p = next;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
 
+
+
+<p>为什么不能直接用WeakHashMap实现细粒度锁：线程不安全。</p>
+<p>替代方案：</p>
+<ol>
+<li>Collections.synchronizedMap 性能差</li>
+<li>ConcurrentReferenceHashMap</li>
+</ol>
+<h3 id="ConcurrentReferenceHashMap实现细粒度锁"><a href="#ConcurrentReferenceHashMap实现细粒度锁" class="headerlink" title="ConcurrentReferenceHashMap实现细粒度锁"></a>ConcurrentReferenceHashMap实现细粒度锁</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WeakHashLock</span>&lt;<span class="title">T</span>&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">private</span> <span class="keyword">final</span> ConcurrentReferenceHashMap&lt;T, ReentrantLock&gt; referenceHashMap;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">WeakHashLock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.referenceHashMap = <span class="keyword">new</span> ConcurrentReferenceHashMap&lt;&gt;(</span><br><span class="line">                <span class="number">16</span>, <span class="number">0.75f</span>, <span class="number">16</span>, ConcurrentReferenceHashMap.ReferenceType.WEAK);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> ReentrantLock <span class="title">get</span><span class="params">(T key)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">this</span>.referenceHashMap.computeIfAbsent(key, lock -&gt; <span class="keyword">new</span> ReentrantLock());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Guava-Striped实现细粒度锁"><a href="#Guava-Striped实现细粒度锁" class="headerlink" title="Guava Striped实现细粒度锁"></a>Guava Striped实现细粒度锁</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Striped&lt;Lock&gt; lockStriped = Striped.lazyWeakLock(<span class="number">1024</span>);</span><br></pre></td></tr></table></figure>
+
+<p>Striped能保证hashcode相等的对象拿到的是同一个锁，但是<strong>hashcode不同的对象也可能拿到同一把锁</strong>，由trip个数决定并发度。</p>
  
       <!-- reward -->
       
@@ -175,12 +190,12 @@
     <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" alt="微信分享二维码">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2022/03/24/Java%E5%A4%9A%E7%B2%92%E5%BA%A6%E9%94%81/" alt="微信分享二维码">
     </div>
 </div>
 
 <div id="share-mask"></div>  
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GC/" rel="tag">GC</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/lock/" rel="tag">lock</a></li></ul>
 
     </footer>
   </div>
@@ -188,19 +203,19 @@
    
   <nav class="article-nav">
     
-      <a href="/2021/10/30/disruptor%E6%8E%A2%E7%B4%A2/" class="article-nav-link">
+      <a href="/2022/03/24/Redis%E6%A0%B8%E5%BF%83%E6%9C%BA%E5%88%B6/" class="article-nav-link">
         <strong class="article-nav-caption">上一篇</strong>
         <div class="article-nav-title">
           
-            disruptor探索
+            Redis核心机制
           
         </div>
       </a>
     
     
-      <a href="/2021/05/26/hexo-TravisCI%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/" class="article-nav-link">
+      <a href="/2022/02/20/%E7%BB%9F%E4%B8%80%E5%BC%82%E5%B8%B8%E5%A4%84%E7%90%86%E7%BB%8F%E9%AA%8C/" class="article-nav-link">
         <strong class="article-nav-caption">下一篇</strong>
-        <div class="article-nav-title">hexo+TravisCI实现自动发布博客</div>
+        <div class="article-nav-title">统一异常处理经验</div>
       </a>
     
   </nav>

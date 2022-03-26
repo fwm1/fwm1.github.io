@@ -11,7 +11,7 @@
         name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1"
       />
-      <title>JVM配置GC参数 |  qncwzw&#39;s Blog</title>
+      <title>Redis核心机制 |  qncwzw&#39;s Blog</title>
   <meta name="generator" content="hexo-theme-ayer">
       
       <link rel="shortcut icon" href="/images/F.svg" />
@@ -54,7 +54,7 @@
     <main class="content on">
       <section class="outer">
   <article
-  id="post-JVM配置GC参数"
+  id="post-Redis核心机制"
   class="article article-type-post"
   itemscope
   itemprop="blogPost"
@@ -65,7 +65,7 @@
     <header class="article-header">
        
 <h1 class="article-title sea-center" style="border-left:0" itemprop="name">
-  JVM配置GC参数
+  Redis核心机制
 </h1>
  
 
@@ -73,11 +73,11 @@
     </header>
      
     <div class="article-meta">
-      <a href="/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" class="article-date">
-  <time datetime="2021-06-07T15:15:58.000Z" itemprop="datePublished">2021-06-07</time>
+      <a href="/2022/03/24/Redis%E6%A0%B8%E5%BF%83%E6%9C%BA%E5%88%B6/" class="article-date">
+  <time datetime="2022-03-24T14:24:28.000Z" itemprop="datePublished">2022-03-24</time>
 </a> 
   <div class="article-category">
-    <a class="article-category-link" href="/categories/Java/">Java</a>
+    <a class="article-category-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a>
   </div>
   
 <div class="word_count">
@@ -85,7 +85,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">147</span>
+            <span class="post-count">1k</span>
         </span>
     </span>
 
@@ -94,7 +94,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-book-open-line"></i>
             <span class="post-meta-item-text"> 阅读时长≈</span>
-            <span class="post-count">1 分钟</span>
+            <span class="post-count">3 分钟</span>
         </span>
     </span>
 </div>
@@ -109,8 +109,52 @@
   
     <div class="article-entry" itemprop="articleBody">
        
-  <h5 id="GC日志配置参考"><a href="#GC日志配置参考" class="headerlink" title="GC日志配置参考"></a>GC日志配置参考</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"># 必备</span><br><span class="line">-XX:+PrintGCDetails </span><br><span class="line">-XX:+PrintGCDateStamps</span><br><span class="line"># 打印对象年龄分布情况</span><br><span class="line">-XX:+PrintTenuringDistribution </span><br><span class="line"># 每次GC时，对比一下GC前后堆内存情况</span><br><span class="line">-XX:+PrintHeapAtGC </span><br><span class="line"># 打印STW时间,是GC最重要的指标</span><br><span class="line">-XX:+PrintGCApplicationStoppedTime</span><br><span class="line">    </span><br><span class="line"># GC日志输出的文件路径，%t表示以时间戳命名文件，避免gc日志每次重启被覆盖</span><br><span class="line">-Xloggc:/path/to/gc-%t.log</span><br><span class="line"># 开启日志文件分割</span><br><span class="line">-XX:+UseGCLogFileRotation </span><br><span class="line"># 最多分割几个文件，超过之后从头文件开始写</span><br><span class="line">-XX:NumberOfGCLogFiles=<span class="number">14</span></span><br><span class="line"># 每个文件上限大小，超过就触发分割</span><br><span class="line">-XX:GCLogFileSize=100M</span><br></pre></td></tr></table></figure>
-
+  <h3 id="Redis主从复制"><a href="#Redis主从复制" class="headerlink" title="Redis主从复制"></a>Redis主从复制</h3><p>作用：数据冗余、故障恢复、负载均衡、高可用</p>
+<p>复制方式：全量复制和增量复制</p>
+<h5 id="全量复制"><a href="#全量复制" class="headerlink" title="全量复制"></a>全量复制</h5><ol>
+<li><p>主从库间建立连接、协商同步</p>
+<p>具体来说，从库给主库发送 psync 命令，表示要进行数据同步，主库根据这个命令的参数来启动复制。psync 命令包含了<strong>主库的 runID</strong> 和复<strong>制进度 offset</strong> 两个参数。runID，是每个 Redis 实例启动时都会自动生成的一个随机 ID，用来唯一标记这个实例。当从库和主库第一次复制时，因为不知道主库的 runID，所以将 runID 设为“？”。offset，此时设为 -1，表示第一次复制。主库收到 psync 命令后，会用 FULLRESYNC 响应命令带上两个参数：主库 runID 和主库目前的复制进度 offset，返回给从库。从库收到响应后，会记录下这两个参数。这里有个地方需要注意，FULLRESYNC 响应表示第一次复制采用的全量复制，也就是说，主库会把当前所有的数据都复制给从库。</p>
+</li>
+<li><p>主库将所有数据同步给从库</p>
+<p>具体来说，主库执行 bgsave 命令，生成 RDB 文件，接着将文件发给从库。从库接收到 RDB 文件后，会先清空当前数据库，然后加载 RDB 文件。在主库将数据同步给从库的过程中，主库不会被阻塞，仍然可以正常接收请求但是，这些请求中的写操作并没有记录到刚刚生成的 RDB 文件中。为了保证主从库的数据一致性，主库会在内存中用专门的 <strong>replication buffer</strong>，记录 RDB 文件生成后收到的所有写操作。</p>
+</li>
+<li><p>主库会把第二阶段执行过程中新收到的写命令，再发送给从库</p>
+<p>从库接受到新的写命令后，再重新执行这些操作。</p>
+</li>
+</ol>
+<h3 id="哨兵机制"><a href="#哨兵机制" class="headerlink" title="哨兵机制"></a>哨兵机制</h3><p>作用：主节点的自动故障转移</p>
+<p>Redis Sentinel本身也是一个集群，可以：</p>
+<ol>
+<li>对于redis数据节点的连通信由多个sentinel节点共同决定（主观、客观下线），避免误判；</li>
+<li>sentinel本身的高可用</li>
+</ol>
+<p>哨兵实现的功能：</p>
+<ol>
+<li>监控：其他sentinel节点  以及  redis主从节点</li>
+<li>通知：通知上层应用</li>
+<li><strong>自动故障转移</strong></li>
+<li>客户端的配置中心，客户端在初始化的时候连接的是Sentinel节点集合，从中获取主节点信息</li>
+</ol>
+<h4 id="原理"><a href="#原理" class="headerlink" title="原理"></a>原理</h4><h5 id="监控"><a href="#监控" class="headerlink" title="监控"></a>监控</h5><p>sentinel节点监控其他sentinel节点  以及  redis主从节点，是通过pub/sub功能实现的。</p>
+<p>sentinel节点有3个定时任务：</p>
+<ol>
+<li>节点状态监控。每1秒向其他sentinel节点和redis主从节点发送<strong>PING</strong>命令，检测连通信</li>
+<li>sentinel节点信息交换。每2秒向redis主节点的”____sentinel____hello”的channel发送自身信息以及对自己认为的主节点信息。</li>
+<li>监控主从拓扑结构信息。每10s，每个sentinel节点会向主从节点发送<strong>INFO</strong>命令，获取主从信息。</li>
+</ol>
+<h5 id="Sentinel-Leader选举（Raft）"><a href="#Sentinel-Leader选举（Raft）" class="headerlink" title="Sentinel Leader选举（Raft）"></a>Sentinel Leader选举（Raft）</h5><h5 id="故障转移"><a href="#故障转移" class="headerlink" title="故障转移"></a>故障转移</h5><p>选举出的Leader Sentinel节点将负责故障转移。</p>
+<ol>
+<li>从slave节点中筛选出一个作为新的master，判断条件有以下几点：<ol>
+<li>跟主节点断开时时长。如果一个slave跟master的断开连接时长已经超过了down-after-milliseconds的10倍，外加master宕机的时长，那么该slave就被认为不适合选举为master。</li>
+<li>slave的优先级配置：slave priority参数值越小，优先级就越高。</li>
+<li>复制offset：当优先级相同时，哪个slave复制了越多的数据（offset越靠后），优先级越高。</li>
+<li>run id：如果offset和优先级都相同，则哪个slave的run id越小，优先级越高。</li>
+</ol>
+</li>
+<li>对最终筛选出来的slave节点执行<strong>slaveof no one</strong>命令，使其成为主节点。</li>
+<li>Leader Sentinel向剩余的slave节点发送命令，让它们成为新的master节点的从节点。</li>
+<li>Leader Sentinel会将原来的主节点更新为从节点，并当其恢复后命令它去复制新的主节点。</li>
+</ol>
  
       <!-- reward -->
       
@@ -175,12 +219,12 @@
     <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2021/06/07/JVM%E9%85%8D%E7%BD%AEGC%E5%8F%82%E6%95%B0/" alt="微信分享二维码">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2022/03/24/Redis%E6%A0%B8%E5%BF%83%E6%9C%BA%E5%88%B6/" alt="微信分享二维码">
     </div>
 </div>
 
 <div id="share-mask"></div>  
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/GC/" rel="tag">GC</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/redis/" rel="tag">redis</a></li></ul>
 
     </footer>
   </div>
@@ -188,19 +232,10 @@
    
   <nav class="article-nav">
     
-      <a href="/2021/10/30/disruptor%E6%8E%A2%E7%B4%A2/" class="article-nav-link">
-        <strong class="article-nav-caption">上一篇</strong>
-        <div class="article-nav-title">
-          
-            disruptor探索
-          
-        </div>
-      </a>
     
-    
-      <a href="/2021/05/26/hexo-TravisCI%E5%AE%9E%E7%8E%B0%E8%87%AA%E5%8A%A8%E5%8F%91%E5%B8%83%E5%8D%9A%E5%AE%A2/" class="article-nav-link">
+      <a href="/2022/03/24/Java%E5%A4%9A%E7%B2%92%E5%BA%A6%E9%94%81/" class="article-nav-link">
         <strong class="article-nav-caption">下一篇</strong>
-        <div class="article-nav-title">hexo+TravisCI实现自动发布博客</div>
+        <div class="article-nav-title">Java细粒度锁</div>
       </a>
     
   </nav>
