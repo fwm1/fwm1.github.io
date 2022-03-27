@@ -85,7 +85,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">1.3k</span>
+            <span class="post-count">1.5k</span>
         </span>
     </span>
 
@@ -94,7 +94,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-book-open-line"></i>
             <span class="post-meta-item-text"> 阅读时长≈</span>
-            <span class="post-count">4 分钟</span>
+            <span class="post-count">5 分钟</span>
         </span>
     </span>
 </div>
@@ -181,18 +181,18 @@
 </ol>
 </li>
 </ul>
-<h4 id="Raft算法"><a href="#Raft算法" class="headerlink" title="Raft算法"></a>Raft算法</h4><hr>
+<h4 id="Raft算法（强一致性）"><a href="#Raft算法（强一致性）" class="headerlink" title="Raft算法（强一致性）"></a>Raft算法（强一致性）</h4><hr>
 <h6 id="节点角色-1"><a href="#节点角色-1" class="headerlink" title="节点角色"></a>节点角色</h6><p>有三种角色，每个节点同时只能属于一个角色，正常运行时只有Leader和Follower角色，选举过程中才会有Candidate角色。</p>
 <ul>
 <li>Leader：接受请求，向Follower同步日志，当日志同步到过半Follower上之后告诉Follower提交日志。</li>
 <li>Follower：接受并持久化Leader同步过来的日志，发送到Follower的客户端请求会被转发到Leader。</li>
-<li>Candidate：Leader选举过程中的临时角色，Follower在超时时间内(100~300ms)没有收到Leader的心跳，随机等待一段时间后发起一次选举。</li>
+<li>Candidate：Leader选举过程中的临时角色，Follower在超时时间内(150~300ms)没有收到Leader的心跳，随机等待一段时间后发起一次选举。</li>
 </ul>
 <h6 id="实现-3"><a href="#实现-3" class="headerlink" title="实现"></a>实现</h6><ul>
 <li>Leader选举阶段<ol>
-<li>初始时所有节点都是Follower，一段时间后大家都没有收到Leader的心跳，则所有Follower节点都<strong>随机等待一段时间</strong>后发起一次选举；</li>
-<li>Follower将其当前<strong>term+1</strong>，然后转换成Candidate角色，向其他Candidate发送投票请求；</li>
-<li>若某个Follower收到多数选票，则升级成Leader；若收到Leader消息，说明有其他节点已经升级为Leader；若没有节点获得过半选票，Leader选举失败，超时后进行下一轮选举。</li>
+<li>初始时所有节点都是Follower，一段时间后大家都没有收到Leader的心跳，则所有Follower节点都<strong>随机等待一段时间</strong>（150~300ms）后发起一次选举，随机时间是为了保证总有一个节点先发出拉票请求，避免选票被各自瓜分，导致选不出leader节点；</li>
+<li>Follower将其当前<strong>term+1</strong>，然后转换成Candidate角色，向其他Follower发送投票请求；投票请求中包含1)<strong>此次选举的term</strong>和2)<strong>本Candidate的最新日志进度</strong>，如果Follower的日志offset比Candidate的日志还要新，就不会给Candidate投票。这是为了保证<em>Leader节点中的日志必须比大多数节点的要新</em>；</li>
+<li>若某个Candidate收到多数选票，则升级成Leader；若收到Leader消息，说明有其他节点已经升级为Leader；若没有节点获得过半选票，Leader选举失败，超时后进行下一轮选举。</li>
 </ol>
 </li>
 <li>日志同步(2PC)<ol>
