@@ -11,7 +11,7 @@
         name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1"
       />
-      <title>categories |  qncwzw&#39;s Blog</title>
+      <title>分库分表及其事务问题 |  qncwzw&#39;s Blog</title>
   <meta name="generator" content="hexo-theme-ayer">
       
       <link rel="shortcut icon" href="/images/F.svg" />
@@ -53,12 +53,230 @@
       
     <main class="content on">
       <section class="outer">
-  
-    <h1 class="page-type-title">分类</h1>
-    <div class="categories-box">
-      <ul class="category-list"><li class="category-list-item"><a class="category-list-link" href="/categories/Java/">Java</a><span class="category-list-count">4</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a><span class="category-list-count">1</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%88%86%E5%B8%83%E5%BC%8F/">分布式</a><span class="category-list-count">2</span></li><li class="category-list-item"><a class="category-list-link" href="/categories/%E5%A4%9A%E7%BA%BF%E7%A8%8B/">多线程</a><span class="category-list-count">1</span></li></ul>
+  <article
+  id="post-分库分表及其事务问题"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  分库分表及其事务问题
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2022/04/16/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E5%8F%8A%E5%85%B6%E4%BA%8B%E5%8A%A1%E9%97%AE%E9%A2%98/" class="article-date">
+  <time datetime="2022-04-16T11:45:40.000Z" itemprop="datePublished">2022-04-16</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">1.1k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">3 分钟</span>
+        </span>
+    </span>
+</div>
+ 
     </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
   
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h2 id="为什么要分库分表"><a href="#为什么要分库分表" class="headerlink" title="为什么要分库分表"></a>为什么要分库分表</h2><p>分库：单库数据量太大，达到了mysql或机器的磁盘空间、IO瓶颈</p>
+<p>分表：单表数据量太大，即使有索引还是查询慢，且数据量一直增加。表中存在过大字段（MEDIUMTEXT、LONGTEXT等）</p>
+<h2 id="如何分库分表"><a href="#如何分库分表" class="headerlink" title="如何分库分表"></a>如何分库分表</h2><h3 id="垂直切分"><a href="#垂直切分" class="headerlink" title="垂直切分"></a>垂直切分</h3><p>垂直分库：根据业务边界划分，把不同业务表放到不同的库中</p>
+<p>垂直分表：1）根据使用频率拆分字段；2）根据字段大小拆分字段，能减少磁盘IO</p>
+<p>优点：</p>
+<ul>
+<li>降低业务耦合度</li>
+<li>数据库物理资源分开，方便后续业务扩展</li>
+</ul>
+<p>缺点：</p>
+<ul>
+<li>如果要看完整行数据，可能需要join多张表</li>
+<li>保存数据多个表，涉及到分布式事务</li>
+</ul>
+<h3 id="水平切分"><a href="#水平切分" class="headerlink" title="水平切分"></a>水平切分</h3><p>水平分库：单表数据量过大，将数据按照一定规则，放到不同表中。</p>
+<p>水平分表策略：</p>
+<ul>
+<li>按照自增id范围分表</li>
+<li>按照时间区间分表</li>
+<li>哈希取模分表，根据userid切分，需要考虑扩容时数据迁移的复杂性，考虑一致性hash</li>
+</ul>
+<h2 id="全局主键问题"><a href="#全局主键问题" class="headerlink" title="全局主键问题"></a>全局主键问题</h2><ul>
+<li>UUID</li>
+<li>一个额外的自增ID表</li>
+<li>雪花算法</li>
+</ul>
+<h2 id="事务一致性问题"><a href="#事务一致性问题" class="headerlink" title="事务一致性问题"></a>事务一致性问题</h2><p>分库之后，对数据的修改可能涉及多个库，此时只靠db的事务是没法保证数据一致性的，需要引入分布式事务解决方案，比如XA协议、2PC、3PC协议进行事务的提交。</p>
+<p>分布式事务虽然能保证跨库更新的原子性，但同时也带来了延迟，提高死锁的几率。所以，如果不要求强一致性，可以考虑采用事务（日志）补偿的方式达到最终一致性。</p>
+<h3 id="典型的分布式事务解决方案"><a href="#典型的分布式事务解决方案" class="headerlink" title="典型的分布式事务解决方案"></a>典型的分布式事务解决方案</h3><h4 id="两阶段提交（2PC）"><a href="#两阶段提交（2PC）" class="headerlink" title="两阶段提交（2PC）"></a>两阶段提交（2PC）</h4><p>2PC即为两阶段提交，是一种在多节点间实现事务原子提交的算法，用来确保所有节点要么全部提交，要么全部中止。我们可以有多种方案来实现该算法，如基于XA协议的实现，阿里也提供了Seata中间件支持2PC算法。</p>
+<p><strong>准备阶段：</strong> 协调者会在准备阶段给所有参与者都发送准备命令。如果参与者发现准备命令无法执行或者执行失败时，可以返回失败，如果执行完成则保存事务日志并返回成功。针对于数据库的操作，准备阶段会记录redolog以及undolog为后续的提交做准备。需要注意的是<strong>在准备阶段时，数据实际是没有被真正保存的</strong>。</p>
+<p><strong>提交阶段：</strong> 协调者在提交阶段会根据准备阶段各个参与者的返回结果，判断是执行事务还是回滚事务并向所有参与者发起提交命令。</p>
+<p>优点：</p>
+<ul>
+<li>事务强一致性</li>
+<li>实现相对简单</li>
+</ul>
+<p>缺点：</p>
+<ul>
+<li>同步阻塞问题，其中一个节点相应慢或者超时，其他节点都得等它</li>
+<li>增大死锁几率，事务从准备阶段到完成一直锁定资源</li>
+<li>事务协调者单点故障风险</li>
+</ul>
+<h4 id="TCC"><a href="#TCC" class="headerlink" title="TCC"></a>TCC</h4><p>TCC分别指的是三个步骤，Try - Confirm - Cancel。与2PC类似，它在逻辑也会分成准备和提交两个阶段。但是最大的不同在于<strong>TCC需要业务服务自己去实现准备、执行、回滚的代码，因此可以做到非常灵活。</strong></p>
+<p>Try——对资源进行锁定； Confirm——执行事务；Cancel——回滚事务，取消锁定</p>
+<p>其实TCC本质还是2PC，只是2PC针对于db操作，而TCC可以让业务实现每个阶段的操作，更加灵活。</p>
+<p>优点：实现灵活，</p>
+<p>缺点：代码耦合度搞，改造难度大；包含2PC的所有缺点</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://github.com/dromara/hmily">https://github.com/dromara/hmily</a></p>
+<h4 id="最大努力通知（本地消息表）"><a href="#最大努力通知（本地消息表）" class="headerlink" title="最大努力通知（本地消息表）"></a>最大努力通知（本地消息表）</h4><p>本地消息表其实就是使用了一张额外的表保存了事务操作的日志，通过定时检查日志表中的失败日志并重试，以此达到最终一致性。</p>
+<p>优点：</p>
+<ul>
+<li>不会长时间锁住资源，减少死锁风险</li>
+<li>避免长事务，提高吞吐量</li>
+</ul>
+<p>缺点：不能保证强一致性</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p><strong>2PC</strong> 是强一致性的事务，适合用在数据库层面。</p>
+<p><strong>TCC</strong> 也是强一致性的事务，适合大部分场景，但是对业务代码有侵入，开发量也很大。</p>
+<p><strong>最大努力通知</strong> 是最终一致性事务。</p>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2022/04/16/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E5%8F%8A%E5%85%B6%E4%BA%8B%E5%8A%A1%E9%97%AE%E9%A2%98/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+    
+      <a href="/2022/03/29/%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%80%A7%E6%96%B9%E6%A1%88/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">接口幂等性方案</div>
+      </a>
+    
+  </nav>
+
+  
+   
+<div class="gitalk" id="gitalk-container"></div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.css">
+
+
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+
+<script type="text/javascript">
+  var gitalk = new Gitalk({
+    clientID: 'feaf79090d8f386c485d',
+    clientSecret: 'bc2947f6035e8a7e51a05dcb4f66e5ecf9b54940',
+    repo: 'fwm1.github.io',
+    owner: 'fwm1',
+    admin: ['fwm1'],
+    // id: location.pathname,      // Ensure uniqueness and length less than 50
+    id: md5(location.pathname),
+    distractionFreeMode: false,  // Facebook-like distraction free mode
+    pagerDirection: 'last'
+  })
+
+  gitalk.render('gitalk-container')
+</script>
+
+     
+</article>
+
 </section>
       <footer class="footer">
   <div class="outer">
@@ -191,6 +409,22 @@
 <script src="/js/lazyload.min.js"></script>
 
 <!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
 <link
