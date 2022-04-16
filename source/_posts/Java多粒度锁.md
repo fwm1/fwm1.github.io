@@ -2,7 +2,7 @@
 title: Java细粒度锁
 date: 2022-03-24 20:38:21
 tags: [lock]
-categories: java
+categories: Java
 ---
 
 ### 从WeakHashMap实现分段锁
