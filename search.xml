@@ -432,6 +432,31 @@
 ]]></content>
   </entry>
   <entry>
+    <title>动态线程池实现思路</title>
+    <url>/2022/04/19/%E5%8A%A8%E6%80%81%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF/</url>
+    <content><![CDATA[<h2 id="jdk线程池分析"><a href="#jdk线程池分析" class="headerlink" title="jdk线程池分析"></a>jdk线程池分析</h2><h4 id="如何执行任务"><a href="#如何执行任务" class="headerlink" title="如何执行任务"></a>如何执行任务</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">ThreadPoolExecutor#<span class="function">execute</span></span><br><span class="line"><span class="function">    </span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">execute</span><span class="params">(Runnable command)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (command == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">    <span class="comment">//线程池利用AtomicInteger 一个ctl变量来同时保存当前池状态（高3位）和当前池线程数（低29位）</span></span><br><span class="line">    <span class="keyword">int</span> c = ctl.get();</span><br><span class="line">    <span class="keyword">if</span> (workerCountOf(c) &lt; corePoolSize) &#123;</span><br><span class="line">        <span class="keyword">if</span> (addWorker(command, <span class="keyword">true</span>))</span><br><span class="line">            <span class="comment">//1.如果当前线程数 &lt; 核心线程池，则新建一个线程来处理提交的任务</span></span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        c = ctl.get();</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> (isRunning(c) &amp;&amp; workQueue.offer(command)) &#123;</span><br><span class="line">        <span class="keyword">int</span> recheck = ctl.get();</span><br><span class="line">        <span class="keyword">if</span> (! isRunning(recheck) &amp;&amp; remove(command))</span><br><span class="line">            <span class="comment">//2.线程池处于非running状态，从任务队列移除任务并执行拒绝策略</span></span><br><span class="line">            reject(command);</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (workerCountOf(recheck) == <span class="number">0</span>)</span><br><span class="line">            addWorker(<span class="keyword">null</span>, <span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//3.如果当前线程数 &gt; 核心线程数且任务队列没满，则将任务放入任务队列等待执行</span></span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (!addWorker(command, <span class="keyword">false</span>))</span><br><span class="line">        <span class="comment">//4.如果当前线程数 &gt; 最大线程数，且队列已满，则拒绝该任务</span></span><br><span class="line">        reject(command);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h4 id="Woker线程管理"><a href="#Woker线程管理" class="headerlink" title="Woker线程管理"></a>Woker线程管理</h4><p>Worker是线程池内的工作线程</p>
+<ol>
+<li>继承了AQS（执行时通过锁住worker对象表示任务正在执行中，并且是不可重入的）</li>
+<li>实现了Runnable接口，在run方法里循环从任务队列获取任务</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">Worker</span> <span class="keyword">extends</span> <span class="title">AbstractQueuedSynchronizer</span> <span class="keyword">implements</span> <span class="title">Runnable</span></span>&#123;</span><br><span class="line">    <span class="keyword">final</span> Thread thread;<span class="comment">//Worker持有的线程</span></span><br><span class="line">    Runnable firstTask;<span class="comment">//初始化的任务，可以为null。为null表示非核心线程</span></span><br><span class="line">    </span><br><span class="line">    Worker(Runnable firstTask) &#123;</span><br><span class="line">        setState(-<span class="number">1</span>); <span class="comment">// inhibit interrupts until runWorker</span></span><br><span class="line">        <span class="keyword">this</span>.firstTask = firstTask;</span><br><span class="line">        <span class="keyword">this</span>.thread = getThreadFactory().newThread(<span class="keyword">this</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://s2.loli.net/2022/04/21/uPRDxwmzYApgtif.png" alt="03268b9dc49bd30bb63064421bb036bf90315"></p>
+<h5 id="非核心线程如何回收"><a href="#非核心线程如何回收" class="headerlink" title="非核心线程如何回收"></a>非核心线程如何回收</h5><p>线程池中线程的销毁依赖JVM自动的回收，ThreadPoolExecutor<strong>通过一个hashset持有线程的引用</strong>，防止这些线程被回收。对于需要回收的线程，只要移除引用即可。</p>
+<p>在addWorker方法中，如果Worker创建成功，会将worker的引用添加到workers一个hashset里面，非核心线程在拉取任务超时后，会执行processWorkerExit，将自己的引用从workers里面移除，之后就交给gc去回收线程。</p>
+<h5 id="如何判断worker线程的状态"><a href="#如何判断worker线程的状态" class="headerlink" title="如何判断worker线程的状态"></a>如何判断worker线程的状态</h5><p>Worker是通过继承AQS，使用AQS来实现独占锁这个功能。没有使用可重入锁ReentrantLock，而是使用AQS，为的就是实现不可重入的特性去反应线程现在的执行状态。</p>
+<ol>
+<li>lock方法一旦获取了独占锁，表示当前线程正在执行任务中。如果正在执行任务，则不应该中断线程</li>
+<li>线程池在执行shutdown方法或tryTerminate方法时会调用interruptIdleWorkers方法来中断空闲的线程，interruptIdleWorkers方法会<strong>使用tryLock方法来判断线程池中的线程是否是空闲状态</strong>；如果线程是空闲状态则可以安全回收。</li>
+</ol>
+<p><img src="https://p1.meituan.net/travelcube/9d8dc9cebe59122127460f81a98894bb34085.png" alt="图8 线程池回收过程"></p>
+]]></content>
+  </entry>
+  <entry>
     <title>接口幂等性方案</title>
     <url>/2022/03/29/%E6%8E%A5%E5%8F%A3%E5%B9%82%E7%AD%89%E6%80%A7%E6%96%B9%E6%A1%88/</url>
     <content><![CDATA[<h2 id="什么是接口幂等性"><a href="#什么是接口幂等性" class="headerlink" title="什么是接口幂等性"></a>什么是接口幂等性</h2><p>同一个接口，被调用多次时，必须保证操作只执行一次。</p>
