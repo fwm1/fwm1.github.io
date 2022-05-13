@@ -441,6 +441,7 @@
 <p>但不建议这么做，消息中间件本来就是为了异步解耦，如今把他糅合进事务里，大大降低了性能。</p>
 <p>那么如何保证，数据库操作和消息发送的一致性呢？</p>
 <h5 id="MQ事务消息"><a href="#MQ事务消息" class="headerlink" title="MQ事务消息"></a>MQ事务消息</h5><p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220513104308.png" alt="BE2326B0-FC19-4620-BD2E-D34A32B8A405.png"></p>
+<p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220513110715.png" alt="事务消息"></p>
 <ol>
 <li>发送一个事务消息，这个时候，RocketMQ将消息状态标记为Prepared，此时这条消息还没有真正投递，消费者是无法消费到</li>
 <li>执行业务代码逻辑，可能是一个本地数据库事务操作</li>
@@ -461,6 +462,9 @@
 <li>监听mq发送回调，如果回调成功，将prepared状态更新为committed状态</li>
 <li>同时启动一个定时任务，扫描prepared消息记录，根据业务规则进行mq补偿或直接删除。</li>
 </ol>
+<h3 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h3><p><a href="http://www.tianshouzhi.com/api/tutorials/distributed_transaction/389">http://www.tianshouzhi.com/api/tutorials/distributed_transaction/389</a></p>
+<p><a href="https://help.aliyun.com/document_detail/43348.html">https://help.aliyun.com/document_detail/43348.html</a></p>
+<p><a href="https://cloud.tencent.com/developer/article/1536348">https://cloud.tencent.com/developer/article/1536348</a></p>
 ]]></content>
   </entry>
   <entry>
