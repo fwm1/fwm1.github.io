@@ -81,7 +81,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> 字数统计:</span>
-            <span class="post-count">662</span>
+            <span class="post-count">669</span>
         </span>
     </span>
 
@@ -124,7 +124,8 @@
 <li>lock方法一旦获取了独占锁，表示当前线程正在执行任务中。如果正在执行任务，则不应该中断线程</li>
 <li>线程池在执行shutdown方法或tryTerminate方法时会调用interruptIdleWorkers方法来中断空闲的线程，interruptIdleWorkers方法会<strong>使用tryLock方法来判断线程池中的线程是否是空闲状态</strong>；如果线程是空闲状态则可以安全回收。</li>
 </ol>
-<p><img src="https://p1.meituan.net/travelcube/9d8dc9cebe59122127460f81a98894bb34085.png" alt="图8 线程池回收过程"></p>
+<p><img src="C:\Users\15118\Desktop\9d8dc9cebe59122127460f81a98894bb34085.png" alt="图8 线程池回收过程"></p>
+<p>参考：<a target="_blank" rel="noopener" href="https://juejin.cn/post/7073286368629096485">https://juejin.cn/post/7073286368629096485</a></p>
  
       <!-- reward -->
       
@@ -199,6 +200,15 @@
 
    
   <nav class="article-nav">
+    
+      <a href="/2022/05/09/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/" class="article-nav-link">
+        <strong class="article-nav-caption">上一篇</strong>
+        <div class="article-nav-title">
+          
+            分布式事务
+          
+        </div>
+      </a>
     
     
       <a href="/2022/04/16/%E5%88%86%E5%BA%93%E5%88%86%E8%A1%A8%E5%8F%8A%E5%85%B6%E4%BA%8B%E5%8A%A1%E9%97%AE%E9%A2%98/" class="article-nav-link">

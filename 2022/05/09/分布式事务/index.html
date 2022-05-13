@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+
+
+<html lang="zh-CN">
+  
+
+    <head>
+      <meta charset="utf-8" />
+        
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1"
+      />
+      <title>分布式事务 |  qncwzw&#39;s Blog</title>
+  <meta name="generator" content="hexo-theme-ayer">
+      
+      <link rel="shortcut icon" href="/images/F.svg" />
+       
+<link rel="stylesheet" href="/dist/main.css">
+
+      <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/css/remixicon.min.css"
+      />
+      
+<link rel="stylesheet" href="/css/custom.css">
+ 
+      <script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+       
+ 
+
+      <!-- mermaid -->
+      
+    </head>
+  </html>
+</html>
+
+
+<body>
+  <div id="app">
+    
+      <canvas class="fireworks"></canvas>
+      <style>
+        .fireworks {
+          position: fixed;
+          left: 0;
+          top: 0;
+          z-index: 99999;
+          pointer-events: none;
+        }
+      </style>
+      
+      
+    <main class="content on">
+      <section class="outer">
+  <article
+  id="post-分布式事务"
+  class="article article-type-post"
+  itemscope
+  itemprop="blogPost"
+  data-scroll-reveal
+>
+  <div class="article-inner">
+    
+    <header class="article-header">
+       
+<h1 class="article-title sea-center" style="border-left:0" itemprop="name">
+  分布式事务
+</h1>
+ 
+
+      
+    </header>
+     
+    <div class="article-meta">
+      <a href="/2022/05/09/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/" class="article-date">
+  <time datetime="2022-05-09T12:55:45.000Z" itemprop="datePublished">2022-05-09</time>
+</a>   
+<div class="word_count">
+    <span class="post-time">
+        <span class="post-meta-item-icon">
+            <i class="ri-quill-pen-line"></i>
+            <span class="post-meta-item-text"> 字数统计:</span>
+            <span class="post-count">2.5k</span>
+        </span>
+    </span>
+
+    <span class="post-time">
+        &nbsp; | &nbsp;
+        <span class="post-meta-item-icon">
+            <i class="ri-book-open-line"></i>
+            <span class="post-meta-item-text"> 阅读时长≈</span>
+            <span class="post-count">9 分钟</span>
+        </span>
+    </span>
+</div>
+ 
+    </div>
+      
+    <div class="tocbot"></div>
+
+
+
+
+  
+    <div class="article-entry" itemprop="articleBody">
+       
+  <h3 id="分布式事务的典型场景"><a href="#分布式事务的典型场景" class="headerlink" title="分布式事务的典型场景"></a>分布式事务的典型场景</h3><ul>
+<li>跨库事务</li>
+<li>分库分表</li>
+<li>跨服务调用场景下的分布式事务</li>
+</ul>
+<h3 id="X-Open-DTP模型"><a href="#X-Open-DTP模型" class="headerlink" title="X/Open DTP模型"></a>X/Open DTP模型</h3><p>X/Open是一个国际的技术标准组织，提出了DTP（Distributed Transaction Processing）模型。DTP模型包含以下5中基本元素：</p>
+<ul>
+<li>应用程序(Application Program ，AP)</li>
+<li>资源管理器(Resource Manager，RM)，如数据库、文件系统</li>
+<li>事务管理器(Resource Manager，TM)，负责分配事务唯一标识，监控事务的执行进度，并负责事务的提交、回滚</li>
+<li>通信资源管理器(Communication Resource Manager，CRM)</li>
+<li>通信协议(Communication Protocol，CP)</li>
+</ul>
+<h3 id="XA规范"><a href="#XA规范" class="headerlink" title="XA规范"></a>XA规范</h3><p>XA规范的最主要的作用是，就是<strong>定义了RM-TM的交互接口</strong>，此外XA规范里也对二阶段提交的细节进行了优化和补充。</p>
+<p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220512001007.png" alt="1578CD5A-2EE1-4F41-8DE8-B2F615F79571.png"></p>
+<p><em>注：DTP模型中规定了全局事务的提交要使用二阶段提交，而XA规范中定义了二阶段提交的标准接口</em></p>
+<h4 id="XA规范RM、TM标准交互接口"><a href="#XA规范RM、TM标准交互接口" class="headerlink" title="XA规范RM、TM标准交互接口"></a>XA规范RM、TM标准交互接口</h4><p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220512110823.png" alt="img"></p>
+<h4 id="二阶段提交的缺陷"><a href="#二阶段提交的缺陷" class="headerlink" title="二阶段提交的缺陷"></a>二阶段提交的缺陷</h4><ul>
+<li>同步阻塞</li>
+<li>TM单点故障，TM发生故障，RM会一直阻塞等待，无法完成事务</li>
+<li>数据不一致，在提交阶段，部分机器执行了commit，另外一部分机器因为网络没有收到commit命令，导致数据不一致</li>
+</ul>
+<h4 id="三阶段提交改进"><a href="#三阶段提交改进" class="headerlink" title="三阶段提交改进"></a>三阶段提交改进</h4><p>三阶段提交（canCommit、preCommit、doCommit）主要是为了解决TM单点故障和缩小阻塞范围</p>
+<ul>
+<li>TM和RM都引入超时机制</li>
+<li>将prepare阶段再分成canCommit和preCommit</li>
+</ul>
+<h3 id="JTA规范"><a href="#JTA规范" class="headerlink" title="JTA规范"></a>JTA规范</h3><p>JTA（Java Transaction API）规范可以看作是XA规范的Java版，其把XA规范中规定的DTP模型交互接口抽象成Java接口中的方法。</p>
+<p>JTA相较于DTP模型，又新增了一中角色——<strong>应用服务器（Application Server）</strong>，比如Websphere、WebLogic、Jboss</p>
+<p>Tomcat等，其中除了Tomcat以外都实现了JTA规范，都能提供事务管理的功能。</p>
+<p><em>JTA规范规定，事务管理器的功能应该由Application Server提供</em>。</p>
+<h4 id="JTA接口"><a href="#JTA接口" class="headerlink" title="JTA接口"></a>JTA接口</h4><p>TM供应商实现UserTransaction、TransactionManager、Transaction、TransactionSynchronizationRegistry、Synchronization、Xid接口，通过与XAResource接口交互来实现分布式事务；</p>
+<p>RM供应商（比如mysql）实现XAResource接口；</p>
+<p>Application只需要使用TM提供的UserTransaction接口，进行事务操作即可。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">javax.transaction.Status：事务状态，这个接口主要是定义一些表示事务状态的常量，此接口无需实现</span><br><span class="line"></span><br><span class="line">javax.transaction.Synchronization：同步</span><br><span class="line"></span><br><span class="line">javax.transaction.Transaction：事务</span><br><span class="line"></span><br><span class="line">javax.transaction.TransactionManager：事务管理器</span><br><span class="line"></span><br><span class="line">javax.transaction.UserTransaction：用于声明一个分布式事务</span><br><span class="line"></span><br><span class="line">javax.transaction.TransactionSynchronizationRegistry：事务同步注册</span><br><span class="line"></span><br><span class="line">javax.transaction.xa.XAResource：定义RM提供给TM操作的接口</span><br><span class="line"></span><br><span class="line">javax.transaction.xa.Xid：事务id</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220512193934.png" alt="image-20220512193932400"></p>
+<h3 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h3><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> feng.test.transaction;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.atomikos.icatch.jta.UserTransactionImp;</span><br><span class="line"><span class="keyword">import</span> com.atomikos.jdbc.AtomikosDataSourceBean;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javax.transaction.UserTransaction;</span><br><span class="line"><span class="keyword">import</span> java.sql.Connection;</span><br><span class="line"><span class="keyword">import</span> java.sql.PreparedStatement;</span><br><span class="line"><span class="keyword">import</span> java.sql.ResultSet;</span><br><span class="line"><span class="keyword">import</span> java.sql.Statement;</span><br><span class="line"><span class="keyword">import</span> java.util.Properties;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">AtomikosDemo</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        AtomikosDataSourceBean dataSource = createAtomikosDatasource(<span class="string">&quot;test_db&quot;</span>);</span><br><span class="line">        AtomikosDataSourceBean dataSource1 = createAtomikosDatasource(<span class="string">&quot;test_db_1&quot;</span>);</span><br><span class="line">        Connection conn = <span class="keyword">null</span>;</span><br><span class="line">        Connection conn1 = <span class="keyword">null</span>;</span><br><span class="line">        PreparedStatement ps = <span class="keyword">null</span>;</span><br><span class="line">        PreparedStatement ps1 = <span class="keyword">null</span>;</span><br><span class="line">        </span><br><span class="line">        UserTransaction userTransaction = <span class="keyword">new</span> UserTransactionImp();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">//开启事务</span></span><br><span class="line">            userTransaction.begin();</span><br><span class="line"></span><br><span class="line">            <span class="comment">//操作db</span></span><br><span class="line">            conn = dataSource.getConnection();</span><br><span class="line">            ps = conn.prepareStatement(<span class="string">&quot;INSERT into user(name) VALUES (?)&quot;</span>, Statement.RETURN_GENERATED_KEYS);</span><br><span class="line">            ps.setString(<span class="number">1</span>, <span class="string">&quot;fwm&quot;</span>);</span><br><span class="line">            ps.executeUpdate();</span><br><span class="line"></span><br><span class="line">            ResultSet rs = ps.getGeneratedKeys();</span><br><span class="line">            <span class="keyword">int</span> userId = -<span class="number">1</span>;</span><br><span class="line">            <span class="keyword">while</span> (rs.next()) &#123;</span><br><span class="line">                userId = rs.getInt(<span class="number">1</span>);</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// mock exception</span></span><br><span class="line">            <span class="keyword">int</span> a = <span class="number">1</span> / <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">//操作db1</span></span><br><span class="line">            conn1 = dataSource1.getConnection();</span><br><span class="line">            ps1 = conn1.prepareStatement(<span class="string">&quot;INSERT into account(user_id,money) VALUES (?,?)&quot;</span>);</span><br><span class="line">            ps1.setInt(<span class="number">1</span>, userId);</span><br><span class="line">            ps1.setDouble(<span class="number">2</span>, <span class="number">10000000</span>);</span><br><span class="line">            ps1.executeUpdate();</span><br><span class="line"></span><br><span class="line">            <span class="comment">//两阶段提交</span></span><br><span class="line">            userTransaction.commit();</span><br><span class="line">        &#125; <span class="keyword">catch</span> (Exception e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            ps.close();</span><br><span class="line">            ps1.close();</span><br><span class="line">            conn.close();</span><br><span class="line">            conn1.close();</span><br><span class="line">            dataSource.close();</span><br><span class="line">            dataSource1.close();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">static</span> AtomikosDataSourceBean <span class="title">createAtomikosDatasource</span><span class="params">(String dbName)</span> </span>&#123;</span><br><span class="line">        Properties p = <span class="keyword">new</span> Properties();</span><br><span class="line">        p.setProperty(<span class="string">&quot;url&quot;</span>, <span class="string">&quot;jdbc:mysql://localhost:3306/&quot;</span> + dbName);</span><br><span class="line">        p.setProperty(<span class="string">&quot;user&quot;</span>, <span class="string">&quot;root&quot;</span>);</span><br><span class="line"></span><br><span class="line">        AtomikosDataSourceBean dataSourceBean = <span class="keyword">new</span> AtomikosDataSourceBean();</span><br><span class="line">        dataSourceBean.setUniqueResourceName(dbName);</span><br><span class="line">        dataSourceBean.setXaDataSourceClassName(<span class="string">&quot;com.mysql.jdbc.jdbc2.optional.MysqlXADataSource&quot;</span>);</span><br><span class="line">        dataSourceBean.setXaProperties(p);</span><br><span class="line">        <span class="keyword">return</span> dataSourceBean;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h3 id="柔性事务"><a href="#柔性事务" class="headerlink" title="柔性事务"></a>柔性事务</h3><h4 id="1-最大努力通知"><a href="#1-最大努力通知" class="headerlink" title="1.最大努力通知"></a>1.最大努力通知</h4><p>最大努力通知型( Best-effort delivery)是最简单的一种柔性事务，适用于一些最终一致性时间敏感度低的业务，且被动方处理结果 不影响主动方的处理结果。典型的使用场景：如银行通知、商户通知等。最大努力通知型的实现方案，一般符合以下特点：</p>
+<ul>
+<li>不可靠消息：业务活动主动方，在完成业务处理之后，向业务活动的被动方发送消息，直到通知N次后不再通知，允许消息丢失(不可靠消息)。</li>
+<li>定期校对：业务活动的被动方，根据定时策略，向业务活动主动方查询(主动方提供查询接口)，恢复丢失的业务消息。</li>
+</ul>
+<h4 id="2-TCC两阶段补偿"><a href="#2-TCC两阶段补偿" class="headerlink" title="2.TCC两阶段补偿"></a>2.TCC两阶段补偿</h4><p>TCC的作用主要是解决<strong>跨服务调用场景下的分布式事务</strong>问题。</p>
+<ul>
+<li>Try 完成业务检查，预留业务资源</li>
+<li>Confirm 使用预留的资源执行业务操作</li>
+<li>Cancel 取消预留的业务资源</li>
+</ul>
+<h5 id="TCC-与-两阶段提交"><a href="#TCC-与-两阶段提交" class="headerlink" title="TCC 与 两阶段提交"></a>TCC 与 两阶段提交</h5><ol>
+<li>在阶段1</li>
+</ol>
+<p>​     XA中，各个RM准备提交各自的事务分支，事实上就是准备提交资源的更新操作(insert、delete、update等)；</p>
+<p>​     TCC中，是主业务活动请求(try)各个从业务服务预留资源。</p>
+<ol start="2">
+<li>在阶段2</li>
+</ol>
+<p>​    XA根据第一阶段每个RM是否都prepare成功，判断是要提交还是回滚。如果都prepare成功，那么就commit每个事务分支，反之则rollback每个事务分支；</p>
+<p>   TCC中，如果在第一阶段所有业务资源都预留成功，那么confirm各个从业务服务，否则取消(cancel)所有从业务服务的资源预留请求。</p>
+<p>TCC两阶段提交与XA两阶段提交的区别是：</p>
+<p><strong>XA是资源层面的分布式事务，强一致性，在两阶段提交的整个过程中，一直会持有资源的锁。</strong> XA事务中的两阶段提交内部过程是对开发者屏蔽的，一般由TM、RM的供应商实现二阶段提交的逻辑，开发者从代码层面是感知不到这个过程。事务管理器在两阶段提交过程中，从prepare到commit/rollback过程中，资源实际上一直都是被加锁的。如果有其他人需要更新这两条记录，那么就必须等待锁释放。</p>
+<p><strong>TCC是业务层面的分布式事务，最终一致性，不会一直持有资源的锁。</strong>TCC的每个阶段都需要业务代码参与，同时每个阶段都是由独立的本地事务执行，因此不会对资源一直加锁。Confirm/Cancel相当于补偿性事务（通过一个独立的事务确定/回滚上一个独立事务Try的结果）</p>
+<h5 id="TCC的优缺点"><a href="#TCC的优缺点" class="headerlink" title="TCC的优缺点"></a>TCC的优缺点</h5><p>优点：XA两阶段提交资源层面的，而TCC实际上把资源层面二阶段提交上提到了业务层面来实现。有效了的避免了XA两阶段提交占用资源锁时间过长导致的性能问题。</p>
+<p>缺点：主业务服务和从业务服务都需要进行改造，从业务方改造成本更高。原来只需要提供一个接口，现在需要改造成try、confirm、canel3个接口，开发成本高。</p>
+<h4 id="3-可靠消息最终一致性"><a href="#3-可靠消息最终一致性" class="headerlink" title="3.可靠消息最终一致性"></a>3.可靠消息最终一致性</h4><p>消息发送一致性：产生消息的业务操作和消息发送必须一致。如果业务操作成功，那么由这个业务操作所产生的消息一定要成功投递出去，否则由消息中间件主动丢掉消息，不进行投递。</p>
+<p>案例分析：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//1.先操作db，再发送消息; 这种情况无法保证一致性，不在一个事务里</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">buy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	db.buy();</span><br><span class="line">	mq.send();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//2.先发送消息，再操作db；同样无法保证一致性</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">buy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	mq.send();</span><br><span class="line">	db.buy();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//3.先发送消息，再操作db，且在一个事务里；无法保证一致性，如果db异常，mq消息无法回滚</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">buy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	mq.send();</span><br><span class="line">	db.buy();</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">//4.先操作db，再发送消息，且在一个事务里；看似没有问题，mq异常会回滚db</span></span><br><span class="line"><span class="comment">//但是发送mq消息可能事实上已经成功，如果是响应超时导致的异常。这个时候，数据库操作依然回滚，但是MQ消息实际上已经发送成功，导致不一致</span></span><br><span class="line"><span class="meta">@Transactional</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">buy</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	db.buy();</span><br><span class="line">	mq.send();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="JTA事务管理器"><a href="#JTA事务管理器" class="headerlink" title="JTA事务管理器"></a>JTA事务管理器</h5><p>Spring还提供了另外一个分布式事务管理器<code>JtaTransactionManager</code>。这个是使用XA两阶段提交来保证事务的一致性。当然前提是，你的消息中间件是实现了JMS规范中事务消息相关API。</p>
+<p>但不建议这么做，消息中间件本来就是为了异步解耦，如今把他糅合进事务里，大大降低了性能。</p>
+<p>那么如何保证，数据库操作和消息发送的一致性呢？</p>
+<h5 id="MQ事务消息"><a href="#MQ事务消息" class="headerlink" title="MQ事务消息"></a>MQ事务消息</h5><p><img src="https://gitee.com/fwm123/pictures-repo/raw/master/blog-images/20220513104308.png" alt="BE2326B0-FC19-4620-BD2E-D34A32B8A405.png"></p>
+<ol>
+<li>发送一个事务消息，这个时候，RocketMQ将消息状态标记为Prepared，此时这条消息还没有真正投递，消费者是无法消费到</li>
+<li>执行业务代码逻辑，可能是一个本地数据库事务操作</li>
+<li>确认发送消息，这个时候，RocketMQ将消息状态标记为可消费，这个时候消费者，才能真正的保证消费到这条数据</li>
+</ol>
+<ul>
+<li><p>如果确认消息发送失败了怎么办？</p>
+<p>RocketMQ会定期扫描消息集群中的事务消息，如果发现了Prepared消息，它会向消息发送端(生产者)确认。RocketMQ会根据发送端设置的策略来决定是回滚还是继续发送确认消息。这样就保证了消息发送与本地事务同时成功或同时失败。</p>
+</li>
+<li><p> 如果消费失败怎么办？</p>
+</li>
+</ul>
+<p>  人工补偿解决</p>
+<h5 id="本地事务表"><a href="#本地事务表" class="headerlink" title="本地事务表"></a>本地事务表</h5><p>如果MQ不支持事务消息，可以用本地事务表实现类似的功能。</p>
+<ol>
+<li>Producer开始执行业务，向本地事务表里插入一条prepared消息记录，</li>
+<li>Producer执行db事务，成功的话发送mq消息，否则删除本地事务表里的记录，</li>
+<li>监听mq发送回调，如果回调成功，将prepared状态更新为committed状态</li>
+<li>同时启动一个定时任务，扫描prepared消息记录，根据业务规则进行mq补偿或直接删除。</li>
+</ol>
+ 
+      <!-- reward -->
+      
+    </div>
+    
+
+    <!-- copyright -->
+    
+    <div class="declare">
+      <ul class="post-copyright">
+        <li>
+          <i class="ri-copyright-line"></i>
+          <strong>版权声明： </strong>
+          
+          本博客所有文章除特别声明外，著作权归作者所有。转载请注明出处！
+          
+        </li>
+      </ul>
+    </div>
+    
+    <footer class="article-footer">
+       
+<div class="share-btn">
+      <span class="share-sns share-outer">
+        <i class="ri-share-forward-line"></i>
+        分享
+      </span>
+      <div class="share-wrap">
+        <i class="arrow"></i>
+        <div class="share-icons">
+          
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="ri-weibo-fill"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="ri-wechat-fill"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="ri-qq-fill"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="ri-douban-line"></i>
+          </a>
+          <!-- <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a> -->
+          
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="ri-facebook-circle-fill"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="ri-twitter-fill"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="ri-google-fill"></i>
+          </a>
+        </div>
+      </div>
+</div>
+
+<div class="wx-share-modal">
+    <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://fwm1.github.io/2022/05/09/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div id="share-mask"></div>  
+    </footer>
+  </div>
+
+   
+  <nav class="article-nav">
+    
+    
+      <a href="/2022/04/19/%E5%8A%A8%E6%80%81%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%AE%9E%E7%8E%B0%E6%80%9D%E8%B7%AF/" class="article-nav-link">
+        <strong class="article-nav-caption">下一篇</strong>
+        <div class="article-nav-title">动态线程池实现思路</div>
+      </a>
+    
+  </nav>
+
+  
+   
+<div class="gitalk" id="gitalk-container"></div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.css">
+
+
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.7.2/dist/gitalk.min.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/blueimp-md5@2.10.0/js/md5.min.js"></script>
+
+<script type="text/javascript">
+  var gitalk = new Gitalk({
+    clientID: 'feaf79090d8f386c485d',
+    clientSecret: 'bc2947f6035e8a7e51a05dcb4f66e5ecf9b54940',
+    repo: 'fwm1.github.io',
+    owner: 'fwm1',
+    admin: ['fwm1'],
+    // id: location.pathname,      // Ensure uniqueness and length less than 50
+    id: md5(location.pathname),
+    distractionFreeMode: false,  // Facebook-like distraction free mode
+    pagerDirection: 'last'
+  })
+
+  gitalk.render('gitalk-container')
+</script>
+
+     
+</article>
+
+</section>
+      <footer class="footer">
+  <div class="outer">
+    <ul>
+      <li>
+        Copyrights &copy;
+        2020-2022
+        <i class="ri-heart-fill heart_icon"></i> qncwzw
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        
+        由 <a href="https://hexo.io" target="_blank">Hexo</a> 强力驱动
+        <span class="division">|</span>
+        主题 - <a href="https://github.com/Shen-Yu/hexo-theme-ayer" target="_blank">Ayer</a>
+        
+      </li>
+    </ul>
+    <ul>
+      <li>
+        
+        
+        <span>
+  <span><i class="ri-user-3-fill"></i>访问人数:<span id="busuanzi_value_site_uv"></span></span>
+  <span class="division">|</span>
+  <span><i class="ri-eye-fill"></i>浏览次数:<span id="busuanzi_value_page_pv"></span></span>
+</span>
+        
+      </li>
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      
+    </ul>
+    <ul>
+      <li>
+        <!-- cnzz统计 -->
+        
+      </li>
+    </ul>
+  </div>
+</footer>
+      <div class="float_btns">
+        <div class="totop" id="totop">
+  <i class="ri-arrow-up-line"></i>
+</div>
+
+<div class="todark" id="todark">
+  <i class="ri-moon-line"></i>
+</div>
+
+      </div>
+    </main>
+    <aside class="sidebar on">
+      <button class="navbar-toggle"></button>
+<nav class="navbar">
+  
+  <div class="logo">
+    <a href="/"><img src="/images/F.svg" alt="qncwzw&#39;s Blog"></a>
+  </div>
+  
+  <ul class="nav nav-main">
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/">主页</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/archives">归档</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/categories">分类</a>
+    </li>
+    
+    <li class="nav-item">
+      <a class="nav-item-link" href="/tags">标签</a>
+    </li>
+    
+  </ul>
+</nav>
+<nav class="navbar navbar-bottom">
+  <ul class="nav">
+    <li class="nav-item">
+      
+      <a class="nav-item-link nav-item-search"  title="搜索">
+        <i class="ri-search-line"></i>
+      </a>
+      
+      
+    </li>
+  </ul>
+</nav>
+<div class="search-form-wrap">
+  <div class="local-search local-search-plugin">
+  <input type="search" id="local-search-input" class="local-search-input" placeholder="Search...">
+  <div id="local-search-result" class="local-search-result"></div>
+</div>
+</div>
+    </aside>
+    <div id="mask"></div>
+
+<!-- #reward -->
+<div id="reward">
+  <span class="close"><i class="ri-close-line"></i></span>
+  <p class="reward-p"><i class="ri-cup-line"></i>请我喝杯咖啡吧~</p>
+  <div class="reward-box">
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/alipay.jpg">
+      <span class="reward-type">支付宝</span>
+    </div>
+    
+    
+    <div class="reward-item">
+      <img class="reward-img" src="https://cdn.jsdelivr.net/gh/Shen-Yu/cdn/img/wechat.jpg">
+      <span class="reward-type">微信</span>
+    </div>
+    
+  </div>
+</div>
+    
+<script src="/js/jquery-2.0.3.min.js"></script>
+ 
+<script src="/js/lazyload.min.js"></script>
+
+<!-- Tocbot -->
+ 
+<script src="/js/tocbot.min.js"></script>
+
+<script>
+  tocbot.init({
+    tocSelector: ".tocbot",
+    contentSelector: ".article-entry",
+    headingSelector: "h1, h2, h3, h4, h5, h6",
+    hasInnerContainers: true,
+    scrollSmooth: true,
+    scrollContainer: "main",
+    positionFixedSelector: ".tocbot",
+    positionFixedClass: "is-position-fixed",
+    fixedSidebarOffset: "auto",
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/jquery-modal@0.9.2/jquery.modal.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js"></script>
+
+<script src="/dist/main.js"></script>
+
+<!-- ImageViewer -->
+ <!-- Root element of PhotoSwipe. Must have class pswp. -->
+<div class="pswp" tabindex="-1" role="dialog" aria-hidden="true">
+
+    <!-- Background of PhotoSwipe. 
+         It's a separate element as animating opacity is faster than rgba(). -->
+    <div class="pswp__bg"></div>
+
+    <!-- Slides wrapper with overflow:hidden. -->
+    <div class="pswp__scroll-wrap">
+
+        <!-- Container that holds slides. 
+            PhotoSwipe keeps only 3 of them in the DOM to save memory.
+            Don't modify these 3 pswp__item elements, data is added later on. -->
+        <div class="pswp__container">
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+            <div class="pswp__item"></div>
+        </div>
+
+        <!-- Default (PhotoSwipeUI_Default) interface on top of sliding area. Can be changed. -->
+        <div class="pswp__ui pswp__ui--hidden">
+
+            <div class="pswp__top-bar">
+
+                <!--  Controls are self-explanatory. Order can be changed. -->
+
+                <div class="pswp__counter"></div>
+
+                <button class="pswp__button pswp__button--close" title="Close (Esc)"></button>
+
+                <button class="pswp__button pswp__button--share" style="display:none" title="Share"></button>
+
+                <button class="pswp__button pswp__button--fs" title="Toggle fullscreen"></button>
+
+                <button class="pswp__button pswp__button--zoom" title="Zoom in/out"></button>
+
+                <!-- Preloader demo http://codepen.io/dimsemenov/pen/yyBWoR -->
+                <!-- element will get class pswp__preloader--active when preloader is running -->
+                <div class="pswp__preloader">
+                    <div class="pswp__preloader__icn">
+                        <div class="pswp__preloader__cut">
+                            <div class="pswp__preloader__donut"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pswp__share-modal pswp__share-modal--hidden pswp__single-tap">
+                <div class="pswp__share-tooltip"></div>
+            </div>
+
+            <button class="pswp__button pswp__button--arrow--left" title="Previous (arrow left)">
+            </button>
+
+            <button class="pswp__button pswp__button--arrow--right" title="Next (arrow right)">
+            </button>
+
+            <div class="pswp__caption">
+                <div class="pswp__caption__center"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/default-skin/default-skin.min.css">
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/photoswipe@4.1.3/dist/photoswipe-ui-default.min.js"></script>
+
+<script>
+    function viewer_init() {
+        let pswpElement = document.querySelectorAll('.pswp')[0];
+        let $imgArr = document.querySelectorAll(('.article-entry img:not(.reward-img)'))
+
+        $imgArr.forEach(($em, i) => {
+            $em.onclick = () => {
+                // slider展开状态
+                // todo: 这样不好，后面改成状态
+                if (document.querySelector('.left-col.show')) return
+                let items = []
+                $imgArr.forEach(($em2, i2) => {
+                    let img = $em2.getAttribute('data-idx', i2)
+                    let src = $em2.getAttribute('data-target') || $em2.getAttribute('src')
+                    let title = $em2.getAttribute('alt')
+                    // 获得原图尺寸
+                    const image = new Image()
+                    image.src = src
+                    items.push({
+                        src: src,
+                        w: image.width || $em2.width,
+                        h: image.height || $em2.height,
+                        title: title
+                    })
+                })
+                var gallery = new PhotoSwipe(pswpElement, PhotoSwipeUI_Default, items, {
+                    index: parseInt(i)
+                });
+                gallery.init()
+            }
+        })
+    }
+    viewer_init()
+</script> 
+<!-- MathJax -->
+
+<!-- Katex -->
+
+<!-- busuanzi  -->
+ 
+<script src="/js/busuanzi-2.3.pure.min.js"></script>
+ 
+<!-- ClickLove -->
+
+<!-- ClickBoom1 -->
+
+<script src="https://cdn.jsdelivr.net/npm/animejs@latest/anime.min.js"></script>
+
+<script src="/js/clickBoom1.js"></script>
+ 
+<!-- ClickBoom2 -->
+
+<!-- CodeCopy -->
+ 
+<link rel="stylesheet" href="/css/clipboard.css">
+ <script src="https://cdn.jsdelivr.net/npm/clipboard@2/dist/clipboard.min.js"></script>
+<script>
+  function wait(callback, seconds) {
+    var timelag = null;
+    timelag = window.setTimeout(callback, seconds);
+  }
+  !function (e, t, a) {
+    var initCopyCode = function(){
+      var copyHtml = '';
+      copyHtml += '<button class="btn-copy" data-clipboard-snippet="">';
+      copyHtml += '<i class="ri-file-copy-2-line"></i><span>COPY</span>';
+      copyHtml += '</button>';
+      $(".highlight .code pre").before(copyHtml);
+      $(".article pre code").before(copyHtml);
+      var clipboard = new ClipboardJS('.btn-copy', {
+        target: function(trigger) {
+          return trigger.nextElementSibling;
+        }
+      });
+      clipboard.on('success', function(e) {
+        let $btn = $(e.trigger);
+        $btn.addClass('copied');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-checkbox-circle-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPIED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-checkbox-circle-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+      clipboard.on('error', function(e) {
+        e.clearSelection();
+        let $btn = $(e.trigger);
+        $btn.addClass('copy-failed');
+        let $icon = $($btn.find('i'));
+        $icon.removeClass('ri-file-copy-2-line');
+        $icon.addClass('ri-time-line');
+        let $span = $($btn.find('span'));
+        $span[0].innerText = 'COPY FAILED';
+        
+        wait(function () { // 等待两秒钟后恢复
+          $icon.removeClass('ri-time-line');
+          $icon.addClass('ri-file-copy-2-line');
+          $span[0].innerText = 'COPY';
+        }, 2000);
+      });
+    }
+    initCopyCode();
+  }(window, document);
+</script>
+ 
+<!-- CanvasBackground -->
+
+<script>
+  if (window.mermaid) {
+    mermaid.initialize({ theme: "forest" });
+  }
+</script>
+
+
+    
+    <div id="music">
+    
+    
+    
+    <iframe frameborder="no" border="1" marginwidth="0" marginheight="0" width="200" height="86"
+        src="//music.163.com/outchain/player?type=2&id=185726&auto=0&height=66"></iframe>
+</div>
+
+<style>
+    #music {
+        position: fixed;
+        right: 15px;
+        bottom: 0;
+        z-index: 998;
+    }
+</style>
+    
+  </div>
+</body>
+
+</html>
