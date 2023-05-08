@@ -23,4 +23,4 @@ categories:  数据库
 - 排序规则很重要，用于字符的比较和排序，但大部分场景不需要用区分大小写的排序规则；
 - 修改表中已有列的字符集，使用命令 **ALTER **TABLE  table_1 **CONVERT** **TO** CHARSET utf8mb4；
 - 用户性别，运行状态等有限值的列，MySQL 8.0.16 版本可以使用 CHECK 约束机制，之前的版本可使用 ENUM 枚举字符串类型，外加 SQL_MODE 的严格模式；
-- 加密字段处理。简单的MD5算法可以进行暴力破解，推荐使用动态盐+动态加密算法进行隐私数据的存储。比如动态拼接：$salt$encry_type$encryped_content 
+- 加密字段处理。简单的MD5算法可以进行暴力破解，推荐使用动态盐+动态加密算法进行隐私数据的存储。比如动态拼接：$salt$encry_type$encryped_content
