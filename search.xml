@@ -289,21 +289,60 @@
   <entry>
     <title>《Mysql实战宝典》笔记</title>
     <url>/2023/05/05/%E3%80%8AMysql%E5%AE%9E%E6%88%98%E5%AE%9D%E5%85%B8%E3%80%8B%E7%AC%94%E8%AE%B0/</url>
-    <content><![CDATA[<h1 id="数字类型"><a href="#数字类型" class="headerlink" title="数字类型"></a>数字类型</h1><p><img src="https://raw.githubusercontent.com/fwm1/PicturesRepo/master/blog-images/20230505212036.png" alt="image-20230505212034763"></p>
+    <content><![CDATA[<h3 id="数字类型"><a href="#数字类型" class="headerlink" title="数字类型"></a>数字类型</h3><p><img src="https://raw.githubusercontent.com/fwm1/PicturesRepo/master/blog-images/20230505212036.png" alt="image-20230505212034763"></p>
 <ul>
-<li>不推荐使用整型类型的属性 unsigned，若非要使用，参数 sql_mode 务必额外添加上选项 NO_UNSIGNED_SUBTRACTION；</li>
+<li>在使用 unsigned时需要注意，MySQL默认要求unsigned数值相减之后依然为 unsigned，否则就会报错。设置参数<strong>SET</strong> sql_mode=’NO_UNSIGNED_SUBTRACTION’可以避免这个报错；</li>
 <li>自增整型类型做主键，务必使用类型 BIGINT，当达到自增整型类型的上限值时，再次自增插入，MySQL 数据库会报重复错误；</li>
 <li><strong>注意</strong>：MySQL 8.0 版本前，自增整型会有回溯问题；</li>
 <li><strong>不要</strong>使用浮点类型 Float、Double，MySQL 后续版本将不再支持上述两种类型；</li>
-<li>账户金额字段，可以考虑用整型类型，而不是 DECIMAL 类型，这样性能更好，存储更紧凑。</li>
+<li>账户金额字段，可以考虑用整型类型（使用‘分’作为单位存储而不是‘元’）而不是 DECIMAL 类型，这样性能更好，存储更紧凑。</li>
 </ul>
-<h1 id="字符类型"><a href="#字符类型" class="headerlink" title="字符类型"></a>字符类型</h1><ul>
+<h3 id="字符类型"><a href="#字符类型" class="headerlink" title="字符类型"></a>字符类型</h3><ul>
 <li>CHAR 和 VARCHAR 虽然分别用于存储定长和变长字符，但对于变长字符集（如 GBK、UTF8mb4），其本质是一样的，都是变长，**设计时完全可以用 VARCHAR 替代 CHAR；</li>
 <li>排序规则很重要，用于字符的比较和排序，但大部分场景不需要用区分大小写的排序规则；</li>
 <li>修改表中已有列的字符集，使用命令 **ALTER **TABLE  table_1 <strong>CONVERT</strong> <strong>TO</strong> CHARSET utf8mb4；</li>
 <li>用户性别，运行状态等有限值的列，MySQL 8.0.16 版本可以使用 CHECK 约束机制，之前的版本可使用 ENUM 枚举字符串类型，外加 SQL_MODE 的严格模式；</li>
 <li>加密字段处理。简单的MD5算法可以进行暴力破解，推荐使用动态盐+动态加密算法进行隐私数据的存储。比如动态拼接：$salt$encry_type$encryped_content</li>
 </ul>
+<h3 id="索引"><a href="#索引" class="headerlink" title="索引"></a>索引</h3><ul>
+<li>一般不要对区分度小的列单独创建索引，比如性别。但是在一些业务场景中要根据记录状态进行筛选，但 MySQL 并不知道这个状态列数据的分布情况，认为是平均分布的，故一般会使用全表扫描，此时可以利用Mysql8的直方图功能，让Sql优化器提前知道数据分布，会根据数据分布情况选择合适的索引。</li>
+</ul>
+<h3 id="JOIN连接"><a href="#JOIN连接" class="headerlink" title="JOIN连接"></a>JOIN连接</h3><p>Nested Loop Join 之间的表关联是使用索引进行匹配的，假设表 R 和 S 进行连接，其算法伪代码大致如下：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="operator">/</span><span class="operator">/</span> R为驱动表，S为被驱动表</span><br><span class="line"><span class="keyword">for</span> <span class="keyword">each</span> <span class="type">row</span> r <span class="keyword">in</span> R <span class="keyword">with</span> matching <span class="keyword">condition</span>:</span><br><span class="line"></span><br><span class="line">    lookup index idx_s <span class="keyword">on</span> S <span class="keyword">where</span> index_key <span class="operator">=</span> r</span><br><span class="line"></span><br><span class="line">    if (found)</span><br><span class="line"></span><br><span class="line">      send <span class="keyword">to</span> client</span><br></pre></td></tr></table></figure>
+
+<p>left join左边为驱动表，right join右表为驱动表，inner join查询优化器会选择where过滤后数据量小的作为驱动表。</p>
+<h5 id="避免依赖子查询DEPENDENT-SUBQUERY"><a href="#避免依赖子查询DEPENDENT-SUBQUERY" class="headerlink" title="避免依赖子查询DEPENDENT SUBQUERY"></a>避免依赖子查询DEPENDENT SUBQUERY</h5><h3 id="Mysql高可用"><a href="#Mysql高可用" class="headerlink" title="Mysql高可用"></a>Mysql高可用</h3><p>mysql bin-log复制相关参数：</p>
+<figure class="highlight properties"><table><tr><td class="code"><pre><span class="line"><span class="attr">gtid_mode</span> = <span class="string">on</span></span><br><span class="line"></span><br><span class="line"><span class="attr">enforce_gtid_consistency</span> = <span class="string">1</span></span><br><span class="line"></span><br><span class="line"><span class="attr">binlog_gtid_simple_recovery</span> = <span class="string">1</span></span><br><span class="line"></span><br><span class="line"><span class="attr">relay_log_recovery</span> = <span class="string">ON</span></span><br><span class="line"></span><br><span class="line"><span class="attr">master_info_repository</span> = <span class="string">TABLE </span></span><br><span class="line"></span><br><span class="line"><span class="attr">relay_log_info_repository</span> = <span class="string">TABLE</span></span><br></pre></td></tr></table></figure>
+
+<p>复制类型：</p>
+<ul>
+<li>异步复制</li>
+<li>半同步复制：半同步复制要求 Master 事务提交过程中，至少有 N 个 Slave 接收到二进制日志<ul>
+<li>有损半同步（版本&lt; 5.7）</li>
+<li>无损半同步（版本&gt;=5.7）</li>
+</ul>
+</li>
+<li>多源复制：多个master复制到一台slave</li>
+<li>延迟复制：允许slave 延迟回放接收到的binlog，为了避免master上的误操作，同步到从slave，导致数据完全丢失</li>
+</ul>
+<p><img src="https://raw.githubusercontent.com/fwm1/PicturesRepo/master/blog-images/20230513234229.png" alt="image-20230513234227571"></p>
+<p><img src="https://raw.githubusercontent.com/fwm1/PicturesRepo/master/blog-images/20230513234250.png" alt="image-20230513234248259"></p>
+<p>可以看到有损半同步复制时在commit事务之后发送日志，如果在事务commit之后，slave节点收到日志之前master挂了，会导致已提交的数据在slave节点上丢失；</p>
+<p>无损同步复制则是在commit事务之前发送日志，如果此时master挂了，因为还没有commit，所以不存在丢数据。</p>
+<h5 id="binlog的优缺点"><a href="#binlog的优缺点" class="headerlink" title="binlog的优缺点"></a>binlog的优缺点</h5><ul>
+<li>优点：逻辑日志简单易懂，方便数据之间的同步</li>
+<li>缺点：逻辑日志会记录更改前后的数据内容，会产生大量日志文件，会影响事务提交耗时</li>
+</ul>
+<h5 id="主从复制延迟优化"><a href="#主从复制延迟优化" class="headerlink" title="主从复制延迟优化"></a>主从复制延迟优化</h5><ul>
+<li><p>升级到5.7版本，salve支持多线程并行回放binlog</p>
+</li>
+<li><p>设置并行复制模式为WRITESET。基于每个事务并行，如果事务间更新的记录不冲突，就可以并行。即使master是单线程执行，回放是slave也能够并行</p>
+<figure class="highlight properties"><table><tr><td class="code"><pre><span class="line"><span class="attr">binlog_transaction_dependency_tracking</span> = <span class="string">WRITESET</span></span><br><span class="line"></span><br><span class="line"><span class="attr">transaction_write_set_extraction</span> = <span class="string">XXHASH64</span></span><br><span class="line"></span><br><span class="line"><span class="meta">slave-parallel-type</span> = <span class="string">LOGICAL_CLOCK</span></span><br><span class="line"></span><br><span class="line"><span class="meta">slave-parallel-workers</span> = <span class="string">16</span></span><br></pre></td></tr></table></figure></li>
+</ul>
+<p>主从复制延迟监控不能依赖 Seconds_Behind_Master 的值，最好的方法是额外配置一张心跳表。master定时写入心跳表，更新最新时间，同步到slave节点之后，复制延迟=slave节点时间 - 心跳表最新时间。</p>
+<p>读写分离时发生主从复制延迟怎么办？ 可以控制读写分离的权重，当发生读写分离时，将读请求的权重全部分配到主节点，相当于关闭读写分离。</p>
+<h5 id="容灾方案"><a href="#容灾方案" class="headerlink" title="容灾方案"></a>容灾方案</h5><p>同城三中心</p>
+<p><img src="https://raw.githubusercontent.com/fwm1/PicturesRepo/master/blog-images/20230514151552.png" alt="image-20230514151550650"></p>
 ]]></content>
       <categories>
         <category>数据库</category>
